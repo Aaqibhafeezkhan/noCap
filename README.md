@@ -15,6 +15,15 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
 </p>
 
+<p align="center">
+  <a href="https://fatihserhatturan.github.io/noCap/"><strong>Website</strong></a> ·
+  <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><strong>Download for macOS</strong></a>
+</p>
+
+<p align="center">
+  <img src="docs/assets/screens/flow.png" alt="noCap flow map" width="900" />
+</p>
+
 ---
 
 ## What is noCap?
@@ -57,8 +66,8 @@ hear exactly how a rapper rides the beat.
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-org/nocap.git
-cd nocap
+git clone https://github.com/fatihserhatturan/noCap.git
+cd noCap
 
 # 2. Python environment
 python3 -m venv .venv
