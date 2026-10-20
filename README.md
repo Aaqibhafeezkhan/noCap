@@ -88,7 +88,7 @@ model (~1.5 GB) into `~/.cache/whisper/`. Subsequent runs use the cache.
 
 On Apple Silicon, analysis runs on the GPU: Demucs uses MPS and, with the
 `apple` extra installed, Whisper runs through MLX from the same checkpoint (same
-DTW word timestamps, greedy decoding). Anything that fails on the GPU falls back
+DTW word timestamps, beam search). Anything that fails on the GPU falls back
 to the CPU. `NOCAP_WHISPER_BACKEND=mlx|torch|cpp` and `NOCAP_DEMUCS_DEVICE=cpu`
 pin a backend or device.
 

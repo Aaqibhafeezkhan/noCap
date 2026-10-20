@@ -30,3 +30,11 @@ def load(path: str | Path, target_sr: int = 22050) -> AudioData:
     y, sr = librosa.load(str(path), sr=target_sr, mono=True)
     duration = librosa.get_duration(y=y, sr=sr)
     return AudioData(y=y, sr=sr, duration=float(duration), path=path)
+
+
+def resample_to_16k(audio: AudioData) -> np.ndarray:
+    """Return a float32 array at 16 kHz (Whisper's required rate)."""
+    if audio.sr == 16000:
+        return audio.y.astype(np.float32)
+    import librosa
+    return librosa.resample(audio.y, orig_sr=audio.sr, target_sr=16000).astype(np.float32)

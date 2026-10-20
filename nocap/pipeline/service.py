@@ -121,7 +121,10 @@ def _transcribe(audio_data, options: AnalysisOptions, reporter: ProgressReporter
         if reporter is not None:
             reporter(ProgressEvent("transcribe", "", done=False, pct=pct))
 
-    tr = transcribe(audio_data, language=options.language, whisper_progress_callback=on_whisper_progress)
+    tr = transcribe(
+        audio_data, language=options.language, whisper_progress_callback=on_whisper_progress,
+        vocal_stem=options.separate,
+    )
     require_word_timestamps(tr)
     _emit(reporter, "transcribe", msg("pipeline.languageWords", count=len(tr.words)), True)
     return words_to_timed_lines(tr.words), tr.words

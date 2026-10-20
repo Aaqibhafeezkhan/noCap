@@ -16,12 +16,12 @@ def _run(env: str = "auto"):
 
 
 class WhisperBackendTest(unittest.TestCase):
-    def test_mlx_is_preferred_and_gets_no_beam_size(self) -> None:
+    def test_mlx_is_preferred_and_gets_beam_size(self) -> None:
         with mock.patch.object(whisper_mlx, "is_available", return_value=True), \
                 mock.patch.object(whisper_mlx, "run", return_value=RESULT) as mlx_run, \
                 mock.patch.object(whisper_torch, "run") as torch_run:
             self.assertIs(_run(), RESULT)
-        self.assertNotIn("beam_size", mlx_run.call_args.kwargs)
+        self.assertEqual(mlx_run.call_args.kwargs["beam_size"], 5)
         torch_run.assert_not_called()
 
     def test_mlx_failure_falls_back_to_torch(self) -> None:
@@ -65,7 +65,8 @@ class DemucsDeviceTest(unittest.TestCase):
     def test_gpu_failure_retries_on_cpu(self) -> None:
         calls: list[str] = []
 
-        def apply_model(model, wav, device, progress):
+        def apply_model(model, wav, device, progress, shifts):
+            self.assertEqual(shifts, 0)  # no random offset: same stem on every run
             calls.append(device)
             if device != "cpu":
                 raise RuntimeError("MPS backend out of memory")

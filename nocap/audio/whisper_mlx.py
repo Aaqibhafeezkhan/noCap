@@ -3,7 +3,8 @@
 The model is built straight from the openai-whisper ``.pt`` checkpoint that the
 PyTorch backend already uses, so no extra download is needed, and it gets the
 same tuned cross-attention alignment heads, so DTW word timestamps match the
-PyTorch backend. mlx-whisper decodes greedily (no beam search).
+PyTorch backend. mlx-whisper itself only decodes greedily; beam search comes
+and openai's timestamp rules come from ``nocap.audio.mlx_beam``.
 """
 from __future__ import annotations
 
@@ -25,28 +26,36 @@ def run(
     *,
     language: str | None,
     initial_prompt: str | None,
+    beam_size: int,
     temperature: float,
+    condition_on_previous_text: bool = True,
 ) -> dict:
     import mlx.core as mx
     import mlx_whisper
     from mlx_whisper.transcribe import ModelHolder
+
+    from nocap.audio.mlx_beam import patched_decoding
 
     name = whisper_torch.model_name()
     model = load_model(name)
     # mlx_whisper.transcribe() takes a model path and loads through ModelHolder;
     # hand it our converted model instead and release it afterwards.
     ModelHolder.model, ModelHolder.model_path = model, name
+    use_beam = beam_size > 1
     try:
-        raw = mlx_whisper.transcribe(
-            audio_arr,
-            path_or_hf_repo=name,
-            language=language,
-            word_timestamps=True,
-            initial_prompt=initial_prompt,
-            temperature=temperature,
-            fp16=True,
-            verbose=None,
-        )
+        with patched_decoding():
+            raw = mlx_whisper.transcribe(
+                audio_arr,
+                path_or_hf_repo=name,
+                language=language,
+                word_timestamps=True,
+                initial_prompt=initial_prompt,
+                beam_size=beam_size if use_beam else None,
+                temperature=temperature,
+                condition_on_previous_text=condition_on_previous_text,
+                fp16=True,
+                verbose=None,
+            )
     finally:
         ModelHolder.model = ModelHolder.model_path = None
         del model
