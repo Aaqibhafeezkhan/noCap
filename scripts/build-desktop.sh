@@ -5,6 +5,7 @@
 #   ./scripts/build-desktop.sh              # full build
 #   ./scripts/build-desktop.sh --skip-backend   # skip PyInstaller (use existing build/backend)
 #   ./scripts/build-desktop.sh --skip-frontend  # skip Vite+electron-builder
+#   ./scripts/build-desktop.sh --ad-hoc         # don't sign with Developer ID / notarize
 #
 # Prerequisites (one-time setup already done):
 #   - .venv with project deps + openai-whisper + demucs installed
@@ -23,10 +24,12 @@ BUILD_DIR="$FRONTEND_DIR/build"
 
 SKIP_BACKEND=false
 SKIP_FRONTEND=false
+AD_HOC=false
 for arg in "$@"; do
   case $arg in
     --skip-backend)  SKIP_BACKEND=true ;;
     --skip-frontend) SKIP_FRONTEND=true ;;
+    --ad-hoc)        AD_HOC=true ;;
   esac
 done
 
@@ -173,9 +176,36 @@ if [ "$SKIP_FRONTEND" = false ]; then
   # Build electron main process and package (React is already built in step 2)
   npx tsc -b
   npx vite build --config vite.desktop.config.ts
-  npx electron-builder --mac
+  # Package outside the project: iCloud-synced folders (Desktop, Documents) keep
+  # re-attaching Finder / file-provider attributes that codesign rejects. Only the
+  # finished DMG and zip are copied back.
+  PACK_DIR="$HOME/Library/Caches/noCap-build/dist-app"
+  rm -rf "$PACK_DIR"
+  # Developer ID signing + notarization when the Keychain has the certificate and the
+  # notarytool profile (xcrun notarytool store-credentials "$NOTARY_PROFILE" ...).
+  # Otherwise the afterPack hook ad-hoc signs. --ad-hoc forces the ad-hoc build.
+  NOTARY_PROFILE="${NOCAP_NOTARY_PROFILE:-nocap-notary}"
+  DEVELOPER_ID="$(security find-identity -v -p codesigning | sed -n 's/.*"Developer ID Application: \(.*\)"/\1/p' | head -1)"
+  SIGN_ARGS=()
+  if [ "$AD_HOC" = false ] && [ -n "$DEVELOPER_ID" ]; then
+    if ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
+      echo "✗ Found Developer ID \"$DEVELOPER_ID\" but no notarytool profile \"$NOTARY_PROFILE\"."
+      echo "  Run: xcrun notarytool store-credentials \"$NOTARY_PROFILE\" --apple-id <apple-id> --team-id <team-id>"
+      echo "  or build with --ad-hoc."
+      exit 1
+    fi
+    echo "  Signing as \"Developer ID Application: $DEVELOPER_ID\", notarizing with profile \"$NOTARY_PROFILE\""
+    export NOCAP_SIGNING=developer-id APPLE_KEYCHAIN_PROFILE="$NOTARY_PROFILE"
+    SIGN_ARGS=(-c.mac.identity="$DEVELOPER_ID")
+  else
+    echo "  No Developer ID used — ad-hoc signing (users confirm the app once in Privacy & Security)"
+  fi
+  npx electron-builder --mac -c.directories.output="$PACK_DIR" ${SIGN_ARGS[@]+"${SIGN_ARGS[@]}"}
+  mkdir -p "$FRONTEND_DIR/dist-app"
+  cp "$PACK_DIR"/*.dmg "$PACK_DIR"/*.zip "$FRONTEND_DIR/dist-app/"
 fi
 
 echo ""
 echo "✓ Build complete!"
 echo "  DMG → $FRONTEND_DIR/dist-app/"
+echo "  App → $HOME/Library/Caches/noCap-build/dist-app/mac-arm64/noCap.app"
