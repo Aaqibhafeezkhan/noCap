@@ -19,7 +19,7 @@ class RhymeExportTest(unittest.TestCase):
         self.assertTrue(any(group["type"] == "multi_syllable" for group in flowmap["rhyme_groups"]))
 
     def test_english_rhyme_classifier_detects_slant_and_assonance(self) -> None:
-        slant = classify_pair(analyze_line("cat")[0], analyze_line("bit")[0])
+        slant = classify_pair(analyze_line("rest")[0], analyze_line("less")[0])
         assonance = classify_pair(analyze_line("light")[0], analyze_line("mind")[0])
         self.assertIsNotNone(slant)
         self.assertEqual("slant", slant.kind)
@@ -27,7 +27,7 @@ class RhymeExportTest(unittest.TestCase):
         self.assertEqual("assonance", assonance.kind)
 
     def test_v2_rhyme_groups_mark_internal_placement(self) -> None:
-        words = [TranscriptWord("cat", 0.0, 0.12), TranscriptWord("bit", 0.25, 0.37), TranscriptWord("flow", 2.0, 2.15)]
+        words = [TranscriptWord("rest", 0.0, 0.12), TranscriptWord("less", 0.25, 0.37), TranscriptWord("flow", 2.0, 2.15)]
         flowmap = _flowmap_for(words, title="internal")
         self.assertTrue(any(group["type"] == "slant" and group["placement"] == "internal" for group in flowmap["rhyme_groups"]))
 

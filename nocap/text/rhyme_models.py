@@ -17,6 +17,7 @@ class RhymeProfile:
     tail: tuple[str, ...]
     syllable_count: int
     has_phones: bool
+    vowel_count: int = 1
 
 
 @dataclass(frozen=True)
