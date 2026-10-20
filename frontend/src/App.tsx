@@ -1,162 +1,173 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
-import { BarChart3, Library, Route } from 'lucide-react';
-import { AnalysisPopup } from './components/AnalysisPopup';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DeleteTrackModal } from './components/DeleteTrackModal';
-import { DetailsScreen } from './components/DetailsScreen';
-import { ExportMenu } from './components/ExportMenu';
-import { FlowPixiStage } from './components/FlowPixiStage';
-import { LibraryPanel } from './components/LibraryPanel';
-import { MetricsPanel } from './components/MetricsPanel';
-import { PlayerBar } from './components/PlayerBar';
-import { SourcePanel } from './components/SourcePanel';
+import { FlowView } from './components/flow/FlowView';
+import { ExportMenu } from './components/header/ExportMenu';
+import { LayersMenu } from './components/header/LayersMenu';
+import { TopBar, type AppMode } from './components/header/TopBar';
+import { LibraryScreen } from './components/library/LibraryScreen';
+import { PlayerBar } from './components/player/PlayerBar';
+import { ReportScreen } from './components/report/ReportScreen';
+import { ShortcutsDialog } from './components/ShortcutsDialog';
+import { Toast, type ToastState } from './components/Toast';
+import { buildRhymeStyles } from './flow/colors';
+import { DEFAULT_ZOOM } from './flow/layout';
+import { computeMarkers } from './flow/markers';
 import { useAnalysis } from './hooks/useAnalysis';
+import type { PlayerApi } from './hooks/useAudioPlayer';
 import { useLibrary } from './hooks/useLibrary';
+import { useShortcuts } from './hooks/useShortcuts';
 import { useViewerState } from './hooks/useViewerState';
 import { t } from './i18n';
 import { sampleFlowmap } from './sampleFlowmap';
 import type { FlowMap } from './types';
-import logoUrl from '../../source/logo-transparent.png';
+
+interface OpenTrack {
+  flowmap: FlowMap;
+  id: string | null;
+  hasAudio: boolean;
+  hasVocals: boolean;
+  isDemo: boolean;
+}
 
 export function App() {
-  const [flowmap, setFlowmap] = useState<FlowMap | null>(null);
-  const [hasVocals, setHasVocals] = useState(false);
-  const [hasPlayableAudio, setHasPlayableAudio] = useState(false);
-  const [mode, setMode] = useState<'library' | 'viewer' | 'details'>('library');
+  const [track, setTrack] = useState<OpenTrack | null>(null);
+  const [mode, setMode] = useState<AppMode>('library');
   const [error, setError] = useState('');
-  // audioTimeRef: syncOffset-applied time written directly by PlayerBar's RAF loop.
-  // FlowPixiStage reads this via Pixi's own ticker — bypasses React state entirely.
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const audioTimeRef = useRef(0);
+  const playerApi = useRef<PlayerApi | null>(null);
   const library = useLibrary();
   const viewer = useViewerState();
-  const analysis = useAnalysis((nextFlowmap, nextHasVocals) => {
-    setFlowmap(nextFlowmap);
-    setHasVocals(nextHasVocals);
-    setHasPlayableAudio(true);
-    viewer.reset();
+  const flowmap = track?.flowmap ?? null;
+  const styles = useMemo(() => (flowmap ? buildRhymeStyles(flowmap) : new Map()), [flowmap]);
+  const markers = useMemo(() => (flowmap ? computeMarkers(flowmap.bars) : new Map()), [flowmap]);
+
+  const analysis = useAnalysis((finished) => {
     void library.refreshLibrary();
+    if (!finished) return;
+    setNewIds((current) => new Set(current).add(finished.id));
+    setToast({ id: Date.now(), message: t('toast.analysisDone', { title: finished.title }), action: { label: t('toast.open'), run: () => void openTrack(finished.id) } });
   });
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('sample') === '1') {
-      setFlowmap(sampleFlowmap());
-      setMode('viewer');
-    } else {
-      void library.refreshLibrary();
-    }
-  }, []);
+    if (new URLSearchParams(window.location.search).get('sample') === '1') openDemo();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const meta = useMemo(() => {
-    if (!flowmap) return '';
-    return `${flowmap.metadata.bpm.toFixed(1)} BPM · ${flowmap.bars.length} bars · ${flowmap.syllables.length} syllables`;
-  }, [flowmap]);
+  useEffect(() => {
+    if (mode === 'library') void library.refreshLibrary();
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function show(next: OpenTrack) {
+    audioTimeRef.current = 0;
+    viewer.reset();
+    setTrack(next);
+    setMode('viewer');
+  }
 
   async function openTrack(trackId: string) {
     setError('');
     try {
       const result = await library.openTrack(trackId);
-      setFlowmap(result.flowmap);
-      setHasVocals(result.hasVocals);
-      setHasPlayableAudio(result.hasAudio);
-      viewer.reset();
-      setMode('viewer');
+      show({ flowmap: result.flowmap, id: trackId, hasAudio: result.hasAudio, hasVocals: result.hasVocals, isDemo: false });
+      setNewIds((current) => {
+        const next = new Set(current);
+        next.delete(trackId);
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  function reset() {
-    setFlowmap(null);
-    setHasVocals(false);
-    setHasPlayableAudio(false);
-    viewer.reset();
-    analysis.reset();
-    void library.refreshLibrary();
-    setMode('library');
+  function openDemo() {
+    show({ flowmap: sampleFlowmap(), id: null, hasAudio: false, hasVocals: false, isDemo: true });
   }
 
-  return (
-    <div className="app-shell">
-      <header className="top-bar">
-        <button className="brand" onClick={reset} aria-label={t('app.brandHome')}>
-          <img src={logoUrl} alt="noCap" />
-        </button>
-        <div className="track-info">
-          <span className="track-title">{flowmap?.metadata.title || ''}</span>
-          <span className="track-meta">{meta}</span>
-        </div>
-        {(mode === 'viewer' || mode === 'details') && flowmap && <TopActions mode={mode} setMode={setMode} reset={reset} />}
-      </header>
-      {mode === 'library' && (
-        <main className="library-screen">
-          <LibraryPanel tracks={library.library} onOpenTrack={openTrack} onDeleteTrack={library.setDeleteCandidate} onNewTrack={analysis.start} />
-          {error && analysis.status === 'idle' && <pre className="error-panel">{error}</pre>}
-          {library.deleteCandidate && (
-            <DeleteTrackModal track={library.deleteCandidate} onCancel={() => library.setDeleteCandidate(null)} onConfirm={library.confirmDeleteTrack} />
-          )}
-          {analysis.status !== 'idle' && (
-            <AnalysisPopup filename={analysis.filename} steps={analysis.steps} error={analysis.error} status={analysis.status} transcribePct={analysis.transcribePct} onClose={analysis.close} />
-          )}
-        </main>
-      )}
-      {mode === 'viewer' && flowmap && <Viewer flowmap={flowmap} hasVocals={hasVocals} hasPlayableAudio={hasPlayableAudio} viewer={viewer} audioTimeRef={audioTimeRef} />}
-      {mode === 'details' && flowmap && <DetailsScreen flowmap={flowmap} actions={<ExportMenu flowmap={flowmap} />} />}
-    </div>
-  );
-}
+  async function confirmDelete() {
+    const deleted = library.deleteCandidate?.id;
+    await library.confirmDeleteTrack();
+    if (deleted && deleted === track?.id) setTrack(null);
+  }
 
-function TopActions({ mode, setMode, reset }: {
-  mode: 'viewer' | 'details';
-  setMode: (mode: 'viewer' | 'details') => void;
-  reset: () => void;
-}) {
-  return (
-    <div className="top-actions">
-      <button className={`ghost-btn nav-view-btn ${mode === 'viewer' ? 'nav-view-active' : ''}`} onClick={() => setMode('viewer')}>
-        <Route size={15} /> {t('app.nav.flow')}
-      </button>
-      <button className={`ghost-btn nav-view-btn ${mode === 'details' ? 'nav-view-active' : ''}`} onClick={() => setMode('details')}>
-        <BarChart3 size={15} /> {t('app.nav.details')}
-      </button>
-      <button className="ghost-btn" onClick={reset}>
-        <Library size={15} /> {t('app.nav.library')}
-      </button>
-    </div>
-  );
-}
+  const closeToast = useCallback(() => setToast(null), []);
+  const inTrack = !!flowmap && mode !== 'library';
+  const loopRange = flowmap ? viewer.loopRange(flowmap) : null;
 
-function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer, audioTimeRef }: {
-  flowmap: FlowMap;
-  hasVocals: boolean;
-  hasPlayableAudio: boolean;
-  viewer: ReturnType<typeof useViewerState>;
-  audioTimeRef: MutableRefObject<number>;
-}) {
+  useShortcuts({
+    togglePlay: inTrack ? () => playerApi.current?.toggle() : undefined,
+    playSelection: inTrack && mode === 'viewer' ? () => viewer.playSelection(flowmap!) : undefined,
+    toggleLoop: inTrack && viewer.selection ? () => viewer.setLoop(!viewer.loop) : undefined,
+    toggleSource: inTrack && track?.hasVocals ? () => viewer.setSource(viewer.source === 'mix' ? 'vocals' : 'mix') : undefined,
+    stepBar: mode === 'viewer' && flowmap ? (direction) => viewer.stepBar(flowmap, direction) : undefined,
+    scroll: mode === 'viewer' ? (direction) => document.querySelector('.flow-scroll')?.scrollBy({ top: direction * 120 }) : undefined,
+    clear: mode === 'viewer' ? () => (viewer.activeRhyme ? viewer.setActiveRhyme(null) : viewer.clearSelection()) : undefined,
+    zoom: mode === 'viewer' ? (direction) => (direction === 0 ? viewer.setZoom(DEFAULT_ZOOM) : viewer.zoomStep(direction)) : undefined,
+    toggleInspector: mode === 'viewer' ? () => viewer.setInspectorOpen(!viewer.inspectorOpen) : undefined,
+    screen: (index) => setMode(index === 3 || !flowmap ? 'library' : index === 1 ? 'viewer' : 'report'),
+    help: () => setShowShortcuts(true),
+  });
+
   return (
-    <>
-      <main className="viewer-layout">
-        <SourcePanel source={viewer.source} onSourceChange={viewer.setSource} hasVocals={hasVocals} flowmap={flowmap} hoveredBar={viewer.hoveredBar} />
-        <section className="canvas-area">
-          <FlowPixiStage
-            flowmap={flowmap}
-            audioTimeRef={audioTimeRef}
-            activeRhyme={viewer.activeRhyme}
-            onBarHover={viewer.setHoveredBar}
-            onBarPlay={(barNo) => viewer.playBar(flowmap, barNo)}
-            onWordPlay={(syllable) => viewer.playWord(flowmap, syllable)}
-          />
-        </section>
-        <MetricsPanel flowmap={flowmap} activeRhyme={viewer.activeRhyme} onActiveRhymeChange={viewer.setActiveRhyme} />
-      </main>
-      <PlayerBar
-        enabled={hasPlayableAudio}
-        source={viewer.source}
-        audioPath={flowmap.metadata.audio_path ?? null}
-        playRange={viewer.playRange}
-        syncOffset={viewer.syncOffset}
-        audioTimeRef={audioTimeRef}
-        onSyncOffsetChange={viewer.adjustSyncOffset}
-        onSyncOffsetReset={() => viewer.setSyncOffset(0)}
+    <div className={`app-shell mode-${mode}`}>
+      <TopBar
+        mode={mode}
+        flowmap={flowmap}
+        isDemo={!!track?.isDemo}
+        onModeChange={setMode}
+        inspectorOpen={viewer.inspectorOpen}
+        onInspectorToggle={() => viewer.setInspectorOpen(!viewer.inspectorOpen)}
+        actions={flowmap && (
+          <>
+            {mode === 'viewer' && <LayersMenu layers={viewer.layers} onChange={viewer.setLayers} />}
+            <ExportMenu flowmap={flowmap} />
+          </>
+        )}
       />
-    </>
+
+      {mode === 'library' && (
+        <LibraryScreen
+          tracks={library.library}
+          analysis={analysis}
+          newIds={newIds}
+          openId={track?.id ?? null}
+          error={error}
+          onOpen={(id) => void openTrack(id)}
+          onDelete={library.setDeleteCandidate}
+          onDemo={openDemo}
+        />
+      )}
+      {mode === 'viewer' && flowmap && (
+        <FlowView flowmap={flowmap} styles={styles} markers={markers} viewer={viewer} audioTimeRef={audioTimeRef} isDemo={!!track?.isDemo} />
+      )}
+      {mode === 'report' && flowmap && <ReportScreen flowmap={flowmap} onOpenBar={(barNo) => { setMode('viewer'); viewer.focusBar(barNo); }} />}
+
+      {inTrack && track && (
+        <PlayerBar
+          flowmap={track.flowmap}
+          enabled={track.hasAudio}
+          hasVocals={track.hasVocals}
+          source={viewer.source}
+          onSourceChange={viewer.setSource}
+          playRange={viewer.playRange}
+          loopRange={loopRange}
+          loopAvailable={!!viewer.selection}
+          loop={viewer.loop}
+          onLoopChange={viewer.setLoop}
+          syncOffset={viewer.syncOffset}
+          onSyncNudge={viewer.adjustSyncOffset}
+          onSyncReset={() => viewer.setSyncOffset(0)}
+          audioTimeRef={audioTimeRef}
+          apiRef={playerApi}
+        />
+      )}
+
+      {library.deleteCandidate && (
+        <DeleteTrackModal track={library.deleteCandidate} onCancel={() => library.setDeleteCandidate(null)} onConfirm={() => void confirmDelete()} />
+      )}
+      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+      {toast && <Toast toast={toast} onClose={closeToast} />}
+    </div>
   );
 }

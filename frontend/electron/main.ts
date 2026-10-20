@@ -111,6 +111,10 @@ async function createWindow(): Promise<void> {
 // macOS menu (minimal native menu so keyboard shortcuts work)
 // ---------------------------------------------------------------------------
 
+function sendCanvasZoom(direction: -1 | 0 | 1): void {
+  mainWindow?.webContents.send('nocap:canvas-zoom', direction)
+}
+
 function buildMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -141,9 +145,11 @@ function buildMenu(): void {
         { role: 'reload' },
         { role: 'forceReload' },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        // Zoom drives the flow canvas, not the page (handled in the renderer).
+        { label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => sendCanvasZoom(0) },
+        { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => sendCanvasZoom(1) },
+        { label: 'Zoom In', accelerator: 'CmdOrCtrl+=', visible: false, acceleratorWorksWhenHidden: true, click: () => sendCanvasZoom(1) },
+        { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => sendCanvasZoom(-1) },
         { type: 'separator' },
         { role: 'togglefullscreen' },
         ...(isDev ? [{ role: 'toggleDevTools' as const }] : []),

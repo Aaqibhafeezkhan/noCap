@@ -1,16 +1,55 @@
-export const PALETTE = [
-  0xff4081, 0x40c4ff, 0x69f0ae, 0xffd740, 0xff6d00,
-  0xe040fb, 0x00bcd4, 0xeeff41, 0xff1744, 0x1de9b6,
-  0xf06292, 0x4fc3f7, 0xaed581, 0xffb74d, 0xce93d8,
-  0x80deea, 0xa5d6a7, 0xfff176, 0xef9a9a, 0x80cbc4,
-];
+import type { FlowMap } from '../types';
+import { CANVAS, FEATURED_RHYMES, RHYME_PALETTE } from './theme';
 
-export function buildColorMap(groups: string[]): Map<string, number> {
-  const map = new Map<string, number>();
-  groups.forEach((group, index) => {
-    map.set(group, PALETTE[index % PALETTE.length]);
+export interface RhymeStyle {
+  group: string;
+  /** Colour used on the canvas and in lists. */
+  color: number;
+  /** True for the strongest groups that get their own palette colour. */
+  featured: boolean;
+  /** 0-based rank by size (largest group first). */
+  rank: number;
+  /** Display letter by rank: the largest group is "A", matching the first palette colour. */
+  label: string;
+  count: number;
+}
+
+export type RhymeStyles = Map<string, RhymeStyle>;
+
+/** Ranks rhyme groups by size: the largest {@link FEATURED_RHYMES} get the palette,
+ *  the rest share a quiet grey and are told apart by their letter label. */
+export function buildRhymeStyles(flowmap: FlowMap): RhymeStyles {
+  const counts = new Map<string, number>();
+  for (const chain of flowmap.rhyme_chains) counts.set(chain.group, chain.count);
+  for (const group of flowmap.rhyme_groups) {
+    if (!counts.has(group.id)) counts.set(group.id, group.occurrences.length);
+  }
+  for (const syllable of flowmap.syllables) {
+    if (syllable.rhyme_group && !counts.has(syllable.rhyme_group)) counts.set(syllable.rhyme_group, 0);
+  }
+  const ranked = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+  const styles: RhymeStyles = new Map();
+  ranked.forEach(([group, count], rank) => {
+    const featured = rank < FEATURED_RHYMES;
+    const color = featured ? RHYME_PALETTE[rank] : CANVAS.otherRhyme;
+    styles.set(group, { group, count, rank, featured, color, label: rankLetter(rank) });
   });
-  return map;
+  return styles;
+}
+
+export function rhymeColor(styles: RhymeStyles, group: string | null | undefined): number {
+  if (!group) return CANVAS.unrhymed;
+  return styles.get(group)?.color ?? CANVAS.otherRhyme;
+}
+
+export function rankLetter(rank: number): string {
+  let value = rank;
+  let label = '';
+  do {
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+  return label;
 }
 
 export function colorToCss(color: number): string {

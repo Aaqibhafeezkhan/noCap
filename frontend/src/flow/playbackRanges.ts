@@ -17,6 +17,14 @@ export function getBarTimeRange(flowmap: FlowMap, barNo: number): Omit<PlayRange
   return end > start ? { start, end } : null;
 }
 
+/** From the first beat of `startBar` to the end of `endBar` (inclusive). */
+export function getRangeTimeRange(flowmap: FlowMap, startBar: number, endBar: number): Omit<PlayRange, 'id'> | null {
+  const first = getBarTimeRange(flowmap, startBar);
+  const last = getBarTimeRange(flowmap, endBar);
+  if (!first || !last) return null;
+  return last.end > first.start ? { start: first.start, end: last.end } : null;
+}
+
 export function getWordTimeRange(flowmap: FlowMap, target: FlowSyllable): Omit<PlayRange, 'id'> | null {
   if (target.center_time < 0) return null;
   const index = flowmap.syllables.findIndex((syllable) => sameSyllable(syllable, target));

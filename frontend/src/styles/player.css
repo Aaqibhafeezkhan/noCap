@@ -1,0 +1,36 @@
+/* Persistent player under Flow and Report. */
+.player-bar {
+  flex: none; display: flex; align-items: center; gap: var(--space-3);
+  height: var(--player-h); padding: 0 var(--space-4);
+  background: var(--bg-2); border-top: 1px solid var(--border);
+}
+.play-btn {
+  flex: none; display: grid; place-items: center; width: 38px; height: 38px;
+  border: 0; border-radius: 50%; background: var(--accent); color: #fff;
+  box-shadow: 0 6px 18px -6px rgba(255, 61, 0, 0.7);
+  transition: background 0.15s, transform 0.1s;
+}
+.play-btn:hover:not(:disabled) { background: var(--accent-hover); }
+.play-btn:active:not(:disabled) { transform: scale(0.96); }
+.play-btn:disabled { background: var(--surface-3); color: var(--muted); box-shadow: none; }
+.time-display { flex: none; width: 40px; color: var(--text-2); font: 500 var(--fs-11) var(--font-mono); font-variant-numeric: tabular-nums; }
+.time-total { color: var(--muted); }
+
+.timeline {
+  position: relative; flex: 1; min-width: 160px; height: 34px;
+  border-radius: 6px; background: var(--surface); cursor: pointer; touch-action: none; overflow: hidden;
+}
+.timeline.is-disabled { cursor: default; opacity: 0.5; }
+.timeline-map { position: absolute; inset: 4px 0; }
+.timeline-map i { position: absolute; bottom: 0; background: rgba(180, 180, 189, 0.22); border-radius: 1px 1px 0 0; }
+.timeline-section { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, 0.16); }
+.timeline-loop { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent); }
+.timeline-played { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 61, 0, 0.13); pointer-events: none; }
+.timeline-cursor { position: absolute; top: 2px; bottom: 2px; width: 2px; margin-left: -1px; border-radius: 2px; background: #fff; box-shadow: 0 0 8px rgba(255, 255, 255, 0.6); pointer-events: none; }
+.timeline:hover .timeline-map i, .timeline.is-dragging .timeline-map i { background: rgba(180, 180, 189, 0.34); }
+
+.sync-controls { display: flex; align-items: center; gap: 2px; padding-left: var(--space-2); border-left: 1px solid var(--border); }
+.sync-label { margin-right: 4px; color: var(--muted); font-size: var(--fs-11); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.sync-value { width: 58px; color: var(--muted); font: 500 var(--fs-11) var(--font-mono); text-align: center; }
+.sync-value.is-changed { color: var(--warn); }
+.player-note { color: var(--muted); font-size: var(--fs-12); white-space: nowrap; }

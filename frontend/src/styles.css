@@ -1,6 +1,9 @@
-@import './styles/part-00.css';
-@import './styles/part-01.css';
-@import './styles/part-02.css';
-@import './styles/part-03.css';
-@import './styles/part-04.css';
-@import './styles/part-05.css';
+@import './styles/tokens.css';
+@import './styles/controls.css';
+@import './styles/header.css';
+@import './styles/flow.css';
+@import './styles/inspector.css';
+@import './styles/player.css';
+@import './styles/library.css';
+@import './styles/report.css';
+@import './styles/overlays.css';
