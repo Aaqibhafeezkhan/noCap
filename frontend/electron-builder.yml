@@ -27,18 +27,26 @@ extraResources:
     filter:
       - "checkpoints/*.th"
 
+afterPack: scripts/after-pack.cjs
+
 mac:
   category: public.app-category.music
   icon: build/icon.icns
+  # No Developer ID certificate: skip electron-builder signing (it would otherwise pick
+  # any local "Apple Development" cert, which other Macs do not trust). The afterPack
+  # hook ad-hoc signs instead. Set an identity here once a Developer ID is available.
+  identity: null
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # The PyInstaller backend is built for the host CPU (Apple Silicon), so only arm64
+  # packages work; an x64 app would ship an arm64 backend.
   target:
     - target: dmg
-      arch: [arm64, x64]
+      arch: [arm64]
     - target: zip
-      arch: [arm64, x64]
+      arch: [arm64]
 
 dmg:
   title: noCap

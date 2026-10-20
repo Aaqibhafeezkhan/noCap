@@ -173,9 +173,17 @@ if [ "$SKIP_FRONTEND" = false ]; then
   # Build electron main process and package (React is already built in step 2)
   npx tsc -b
   npx vite build --config vite.desktop.config.ts
-  npx electron-builder --mac
+  # Package outside the project: iCloud-synced folders (Desktop, Documents) keep
+  # re-attaching Finder / file-provider attributes that codesign rejects. Only the
+  # finished DMG and zip are copied back.
+  PACK_DIR="$HOME/Library/Caches/noCap-build/dist-app"
+  rm -rf "$PACK_DIR"
+  npx electron-builder --mac -c.directories.output="$PACK_DIR"
+  mkdir -p "$FRONTEND_DIR/dist-app"
+  cp "$PACK_DIR"/*.dmg "$PACK_DIR"/*.zip "$FRONTEND_DIR/dist-app/"
 fi
 
 echo ""
 echo "✓ Build complete!"
 echo "  DMG → $FRONTEND_DIR/dist-app/"
+echo "  App → $HOME/Library/Caches/noCap-build/dist-app/mac-arm64/noCap.app"
