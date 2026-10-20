@@ -146,23 +146,14 @@ if [ "$SKIP_BACKEND" = false ]; then
   echo "  Backend built → $BACKEND_OUT/nocap-server/"
 fi
 
-# ── 4. Convert icon PNG → icns (if needed) ────────────────────────────────────
+# ── 4. App icon ──────────────────────────────────────────────────────────────
+# The macOS icon lives in source/ (tracked); build/ is git-ignored, so copy it in
+# on every build to keep the packaged app in step with the repository.
 
-ICON_PNG="$BUILD_DIR/icon.png"
-ICON_ICNS="$BUILD_DIR/icon.icns"
-if [ -f "$ICON_PNG" ] && [ ! -f "$ICON_ICNS" ]; then
-  echo ""
-  echo "▶ Converting icon.png → icon.icns"
-  ICONSET="$BUILD_DIR/icon.iconset"
-  mkdir -p "$ICONSET"
-  for size in 16 32 64 128 256 512; do
-    sips -z $size $size "$ICON_PNG" --out "$ICONSET/icon_${size}x${size}.png"        >/dev/null
-    double=$((size * 2))
-    sips -z $double $double "$ICON_PNG" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
-  done
-  iconutil -c icns "$ICONSET" -o "$ICON_ICNS"
-  rm -rf "$ICONSET"
-fi
+echo ""
+echo "▶ Copying app icon"
+cp "$PROJECT_ROOT/source/app-icon.icns" "$BUILD_DIR/icon.icns"
+cp "$PROJECT_ROOT/source/app-icon.png" "$BUILD_DIR/icon.png"
 
 # ── 5. Build Electron main + package with electron-builder ────────────────────
 

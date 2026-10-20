@@ -167,7 +167,16 @@ function buildMenu(): void {
 // App lifecycle
 // ---------------------------------------------------------------------------
 
+// In development Electron shows its own default icon in the Dock; use noCap's instead.
+// Packaged builds get the icon from the .icns bundled by electron-builder.
+function setDevDockIcon(): void {
+  if (!isDev || process.platform !== 'darwin') return
+  const icon = path.join(app.getAppPath(), '..', 'source', 'app-icon.png')
+  if (existsSync(icon)) app.dock?.setIcon(icon)
+}
+
 app.whenReady().then(async () => {
+  setDevDockIcon()
   buildMenu()
   spawnBackend()
   await createWindow()
