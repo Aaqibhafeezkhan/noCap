@@ -1,30 +1,37 @@
 from __future__ import annotations
 
 from .rhyme_models import RhymeProfile
+from .rhyme_stopwords import is_weak_function_word
 from .syllables import WordAnalysis
+
+EMPTY_PROFILE = RhymeProfile("", "", (), 0, False, 0)
 
 
 def profile_for_word(wa: WordAnalysis) -> RhymeProfile:
+    if is_weak_function_word(wa.clean):
+        return EMPTY_PROFILE
     if wa.phones:
-        for idx in range(len(wa.phones) - 1, -1, -1):
-            if wa.phones[idx][-1].isdigit() and int(wa.phones[idx][-1]) in (1, 2):
-                ending = _trim_plural([phone.rstrip("012") for phone in wa.phones[idx:]])
-                return RhymeProfile(
-                    key=" ".join(ending),
-                    vowel=ending[0] if ending else "",
-                    tail=tuple(phone for phone in ending[1:] if not is_vowel_phone(phone)),
-                    syllable_count=wa.syllable_count,
-                    has_phones=True,
-                )
+        ending = _stressed_ending(wa.phones)
+        if not ending:
+            return EMPTY_PROFILE
+        return RhymeProfile(
+            key=" ".join(ending),
+            vowel=ending[0],
+            tail=tuple(phone for phone in ending[1:] if not is_vowel_phone(phone)),
+            syllable_count=wa.syllable_count,
+            has_phones=True,
+            vowel_count=sum(1 for phone in ending if is_vowel_phone(phone)),
+        )
+    vowel = fallback_vowel(wa.clean)
+    if not vowel:
+        return EMPTY_PROFILE
     fallback = wa.clean[-3:] if len(wa.clean) >= 3 else wa.clean
-    return RhymeProfile(fallback, fallback_vowel(wa.clean), tuple(fallback[-1:]), wa.syllable_count, False)
+    return RhymeProfile(fallback, vowel, tuple(fallback[-1:]), wa.syllable_count, False)
 
 
 def rhyme_ending(wa: WordAnalysis) -> str:
     if wa.phones:
-        for idx in range(len(wa.phones) - 1, -1, -1):
-            if wa.phones[idx][-1].isdigit() and int(wa.phones[idx][-1]) in (1, 2):
-                return " ".join(_trim_plural([phone.rstrip("012") for phone in wa.phones[idx:]]))
+        return " ".join(_stressed_ending(wa.phones))
     return wa.clean[-2:] if len(wa.clean) >= 2 else wa.clean
 
 
@@ -38,6 +45,14 @@ def fallback_vowel(clean: str) -> str:
         if ch in "aeiouy":
             return ch
     return ""
+
+
+def _stressed_ending(phones: list[str]) -> list[str]:
+    """Phones from the last stressed vowel onward; empty when nothing is stressed."""
+    for idx in range(len(phones) - 1, -1, -1):
+        if phones[idx][-1].isdigit() and int(phones[idx][-1]) in (1, 2):
+            return _trim_plural([phone.rstrip("012") for phone in phones[idx:]])
+    return []
 
 
 def _trim_plural(ending: list[str]) -> list[str]:
