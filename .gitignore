@@ -38,6 +38,7 @@ frontend/vite.desktop.config.d.ts
 # Desktop build artifacts
 frontend/build/backend/
 frontend/build/whisper_models/
+frontend/build/demucs_models/
 
 # Testing
 .pytest_cache/

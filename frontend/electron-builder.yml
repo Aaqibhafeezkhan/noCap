@@ -21,6 +21,11 @@ extraResources:
     to: whisper_models
     filter:
       - "*.pt"
+  # Demucs weights (torch.hub layout) → Resources/demucs_models/checkpoints/
+  - from: build/demucs_models
+    to: demucs_models
+    filter:
+      - "checkpoints/*.th"
 
 mac:
   category: public.app-category.music
