@@ -12,65 +12,45 @@ const STYLE_SPECS: Record<TextKind, { fontFamily: string; fontSize: number; font
   header: { fontFamily: FONT_MONO, fontSize: 11, fontWeight: '500' },
 };
 
-interface Bucket {
-  items: BitmapText[];
-  used: number;
-}
-
 // Glyph atlases are rendered once per family/weight and scaled per size, so render them
 // sharp enough for retina screens and the largest label size.
 BitmapFontManager.defaultOptions.resolution = Math.max(2, window.devicePixelRatio || 1) * 1.5;
 
-/** Reuses text objects between redraws. BitmapText draws from a shared glyph atlas:
- *  canvas Text keeps one texture per string, and reusing those objects on fast scroll
- *  left stale textures on screen. Each item keeps one style for life and is emptied,
- *  not hidden, when unused. Colour comes from `tint`, so a few styles cover every rhyme colour. */
+/** Text for one canvas layer, rebuilt on every redraw.
+ *
+ *  Reusing text objects across redraws is unreliable in Pixi v8: a canvas Text kept a
+ *  stale texture after its string changed, and a BitmapText that was emptied and
+ *  refilled (zooming out and back in) stopped rendering. BitmapText draws from a shared
+ *  glyph atlas, so creating fresh ones per redraw is cheap; redraws only happen when the
+ *  visible rows, zoom or selection change. Colour comes from `tint`, so a few cached
+ *  styles cover every rhyme colour. */
 export class TextPool {
   readonly container = new Container();
-  private readonly buckets = new Map<string, Bucket>();
   private readonly styles = new Map<string, TextStyle>();
 
   begin() {
-    for (const bucket of this.buckets.values()) bucket.used = 0;
+    for (const child of this.container.removeChildren()) child.destroy();
   }
 
   place(kind: TextKind, text: string, x: number, y: number, tint: number, options: { size?: number; anchorX?: number; anchorY?: number; alpha?: number } = {}) {
-    const key = `${kind}:${options.size ?? STYLE_SPECS[kind].fontSize}`;
-    const item = this.next(key, kind, options.size);
-    if (item.text !== text) item.text = text;
+    const item = new BitmapText({ text, style: this.style(kind, options.size) });
     item.anchor.set(options.anchorX ?? 0, options.anchorY ?? 0);
     item.position.set(Math.round(x), Math.round(y));
     item.tint = tint;
     item.alpha = options.alpha ?? 1;
-    return item;
-  }
-
-  end() {
-    for (const bucket of this.buckets.values()) {
-      for (let index = bucket.used; index < bucket.items.length; index += 1) {
-        if (bucket.items[index].text !== '') bucket.items[index].text = '';
-      }
-    }
-  }
-
-  private next(key: string, kind: TextKind, size?: number): BitmapText {
-    let bucket = this.buckets.get(key);
-    if (!bucket) {
-      bucket = { items: [], used: 0 };
-      this.buckets.set(key, bucket);
-    }
-    if (bucket.used < bucket.items.length) return bucket.items[bucket.used++];
-    const item = new BitmapText({ text: '', style: this.style(key, kind, size) });
     this.container.addChild(item);
-    bucket.items.push(item);
-    bucket.used += 1;
     return item;
   }
 
-  private style(key: string, kind: TextKind, size?: number): TextStyle {
+  /** Kept so callers can mark the end of a redraw; nothing is pooled any more. */
+  end() {}
+
+  private style(kind: TextKind, size?: number): TextStyle {
+    const fontSize = size ?? STYLE_SPECS[kind].fontSize;
+    const key = `${kind}:${fontSize}`;
     let style = this.styles.get(key);
     if (!style) {
-      style = new TextStyle({ ...STYLE_SPECS[kind], fontSize: size ?? STYLE_SPECS[kind].fontSize, fill: 0xffffff });
+      style = new TextStyle({ ...STYLE_SPECS[kind], fontSize, fill: 0xffffff });
       this.styles.set(key, style);
     }
     return style;

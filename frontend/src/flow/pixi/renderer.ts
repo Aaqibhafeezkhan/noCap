@@ -90,10 +90,12 @@ export class FlowRenderer {
   }
 
   setHover(hover: HoverState) {
+    const labelsChanged = hover.rowIndex !== this.hover.rowIndex || hover.onPlayButton !== this.hover.onPlayButton;
     this.hover = hover;
     if (!this.ready || !this.state || !this.drawn) return;
     drawHover(this.hoverLayer, this.state, this.drawn, hover);
-    this.drawLabelColumn();
+    // The label column only shows the hovered row's play button, so skip it otherwise.
+    if (labelsChanged) this.drawLabelColumn();
   }
 
   /** Draws the playhead and returns the row index of the bar being played. */

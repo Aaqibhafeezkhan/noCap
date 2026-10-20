@@ -1,4 +1,4 @@
-import type { FlowMap } from './types';
+import type { FlowMap, FlowWord } from './types';
 import { normalizeFlowMap } from './flow/normalize';
 
 // Demo verse written for noCap (no third-party lyrics). One string per bar; each token
@@ -46,6 +46,7 @@ export function sampleFlowmap(): FlowMap {
     local_bpm: BPM,
   }));
   const syllables: DemoSyllable[] = [];
+  const words: FlowWord[] = [];
   let wordId = 0;
   let pending: DemoSyllable[] = [];
   VERSE.forEach((line, barIndex) => {
@@ -67,6 +68,10 @@ export function sampleFlowmap(): FlowMap {
       if (!token.joins) {
         const word = pending.map((item) => item.word).join('');
         pending.forEach((item) => { item.word = word; });
+        words.push({
+          id: wordId, word, start: pending[0].start, end: pending[pending.length - 1].end, probability: 1,
+          syllable_count: pending.length, stress_pattern: pending.map((item) => (item.stress ? 1 : 0)), timing_quality: 1,
+        });
         pending = [];
         wordId += 1;
       }
@@ -90,7 +95,7 @@ export function sampleFlowmap(): FlowMap {
     metadata: { title: 'noCap Demo Verse', bpm: BPM, duration: lead + barCount * 4 * beatSec + 1, time_signature: 4, audio_path: null },
     beats,
     syllables,
-    words: [],
+    words,
     bars,
     rhyme_groups: groups.map((group) => ({
       id: group, type: 'perfect', placement: 'internal', phonetic_key: KEYS[group] || '', strength: 0.9,
