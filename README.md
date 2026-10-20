@@ -113,8 +113,7 @@ on the target machine.
 
 ```bash
 ./scripts/build-desktop.sh
-# → frontend/dist-app/noCap-0.1.0-arm64.dmg  (Apple Silicon)
-# → frontend/dist-app/noCap-0.1.0.dmg         (Intel)
+# → frontend/dist-app/noCap-0.2.0-arm64.dmg  (Apple Silicon)
 ```
 
 First build takes ~15 minutes (PyInstaller bundles torch + whisper + demucs).
@@ -123,6 +122,13 @@ Subsequent builds that skip the backend are much faster:
 ```bash
 ./scripts/build-desktop.sh --skip-backend
 ```
+
+**Signing.** When the Keychain holds a *Developer ID Application* certificate and a
+notarytool profile named `nocap-notary`
+(`xcrun notarytool store-credentials "nocap-notary" --apple-id … --team-id …`),
+the build signs, notarizes and staples the app, so Gatekeeper opens it without a
+warning. Without them it falls back to an ad-hoc signature (users confirm the app
+once in *Privacy & Security*); `--ad-hoc` forces that fallback.
 
 ---
 
