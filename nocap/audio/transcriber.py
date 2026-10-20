@@ -149,15 +149,14 @@ def _run_backends(audio_arr, *, whisper_progress_callback=None, **options) -> di
     Both Python backends use cross-attention DTW for word timestamps (~10 ms);
     whisper.cpp timestamps are quantised to 20 ms and its -dtw flag is less
     reliable, so it is the last resort. NOCAP_WHISPER_BACKEND=mlx|torch|cpp
-    pins one backend. MLX decodes greedily, so beam_size only applies to the others.
+    pins one backend.
     """
     from nocap.audio import whisper_mlx, whisper_torch
 
     choice = os.environ.get("NOCAP_WHISPER_BACKEND", "auto").strip().lower()
     if choice in ("auto", "mlx") and whisper_mlx.is_available():
-        mlx_options = {k: v for k, v in options.items() if k != "beam_size"}
         try:
-            return whisper_mlx.run(audio_arr, **mlx_options)
+            return whisper_mlx.run(audio_arr, **options)
         except Exception as exc:  # GPU/conversion problems must not fail the analysis
             if choice == "mlx":
                 raise
