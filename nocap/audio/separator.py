@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import logging
 from dataclasses import dataclass
 
@@ -79,14 +80,17 @@ def separation_device() -> str:
 def _apply_on_best_device(apply_model, model, wav_tensor):
     import torch
 
+    # shifts=0: Demucs' default shifts=1 is a single pass at a random 0-0.5 s offset,
+    # which gives a different stem (and transcript) on every run of the same song.
+    apply = functools.partial(apply_model, shifts=0, progress=False)
     device = separation_device()
     with torch.no_grad():
         if device != "cpu":
             try:
-                return apply_model(model, wav_tensor, device=device, progress=False)
+                return apply(model, wav_tensor, device=device)
             except RuntimeError as exc:  # unsupported op / out of GPU memory
                 logger.warning("Demucs on %s failed, retrying on CPU: %s", device, exc)
-        return apply_model(model, wav_tensor, device="cpu", progress=False)
+        return apply(model, wav_tensor, device="cpu")
 
 
 def assess_vocal_stem(vocals: AudioData, mix: AudioData) -> StemQuality:

@@ -13,7 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from nocap.i18n import msg
-from nocap.audio.loader import AudioData
+from nocap.audio import gap_repair
+from nocap.audio.loader import AudioData, resample_to_16k
 from nocap.text.parser import TimedLine
 
 
@@ -66,23 +67,22 @@ def transcribe(
     beam_size: int = 5,
     temperature: float = 0.0,
     whisper_progress_callback=None,
+    vocal_stem: bool = False,
 ) -> TranscriptResult:
     if progress_callback:
         progress_callback(msg("audio.loadingWhisperModel"))
     if progress_callback:
         progress_callback(msg("audio.transcribing"))
 
-    audio_arr = _resample_to_16k(audio)
-
-    result = _run_backends(
-        audio_arr,
-        language=language,
-        initial_prompt=initial_prompt,
-        beam_size=beam_size,
-        temperature=temperature,
-        whisper_progress_callback=whisper_progress_callback,
-    )
+    audio_arr = resample_to_16k(audio)
+    options = dict(language=language, initial_prompt=initial_prompt, beam_size=beam_size, temperature=temperature)
+    result = _run_backends(audio_arr, whisper_progress_callback=whisper_progress_callback, **options)
     words = _filter_words(_extract_words(result))
+    if vocal_stem:  # fill holes where the stem is sung but the first pass found nothing
+        def decode_clip(clip):
+            clip_result = _run_backends(clip, condition_on_previous_text=False, **options)
+            return _filter_words(_extract_words(clip_result))
+        words = gap_repair.repair(audio_arr, words, decode_clip)
     timed_lines = _segments_to_timed_lines(result)
 
     return TranscriptResult(
@@ -121,26 +121,6 @@ def words_to_timed_lines(words: list[TranscriptWord], pause_threshold: float = 0
     return lines
 
 
-# ── Audio resampling ─────────────────────────────────────────────────────────
-
-def _resample_to_16k(audio: AudioData):
-    """Return a float32 numpy array at 16 kHz (Whisper's required rate)."""
-    import numpy as np
-    WHISPER_SR = 16000
-    if audio.sr == WHISPER_SR:
-        return audio.y.astype(np.float32)
-    try:
-        import librosa
-        return librosa.resample(audio.y, orig_sr=audio.sr, target_sr=WHISPER_SR).astype(np.float32)
-    except ImportError:
-        # naive linear interpolation fallback
-        import math
-        ratio = WHISPER_SR / audio.sr
-        n_out = int(len(audio.y) * ratio)
-        indices = np.linspace(0, len(audio.y) - 1, n_out)
-        return np.interp(indices, np.arange(len(audio.y)), audio.y).astype(np.float32)
-
-
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _run_backends(audio_arr, *, whisper_progress_callback=None, **options) -> dict:
@@ -176,6 +156,7 @@ def _run_whisper_cpp(
     initial_prompt: str | None,
     beam_size: int,
     temperature: float,
+    condition_on_previous_text: bool = True,
     whisper_progress_callback=None,
 ) -> dict:
     model_path = _resolve_model_path()
@@ -201,6 +182,8 @@ def _run_whisper_cpp(
         ]
         if initial_prompt:
             cmd.extend(["--prompt", initial_prompt])
+        if not condition_on_previous_text:
+            cmd.extend(["-mc", "0"])  # no text context from previous windows
 
         # Add DTW-based word timestamps when the binary supports it.
         # -dtw MODEL enables cross-attention DTW alignment (≈10 ms accuracy vs 20 ms

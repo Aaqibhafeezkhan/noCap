@@ -65,7 +65,8 @@ class DemucsDeviceTest(unittest.TestCase):
     def test_gpu_failure_retries_on_cpu(self) -> None:
         calls: list[str] = []
 
-        def apply_model(model, wav, device, progress):
+        def apply_model(model, wav, device, progress, shifts):
+            self.assertEqual(shifts, 0)  # no random offset: same stem on every run
             calls.append(device)
             if device != "cpu":
                 raise RuntimeError("MPS backend out of memory")

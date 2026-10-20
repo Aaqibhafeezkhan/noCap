@@ -28,6 +28,7 @@ def run(
     initial_prompt: str | None,
     beam_size: int,
     temperature: float,
+    condition_on_previous_text: bool = True,
 ) -> dict:
     import mlx.core as mx
     import mlx_whisper
@@ -51,6 +52,7 @@ def run(
                 initial_prompt=initial_prompt,
                 beam_size=beam_size if use_beam else None,
                 temperature=temperature,
+                condition_on_previous_text=condition_on_previous_text,
                 fp16=True,
                 verbose=None,
             )

@@ -15,6 +15,7 @@ def run(
     initial_prompt: str | None,
     beam_size: int,
     temperature: float,
+    condition_on_previous_text: bool = True,
 ) -> dict:
     """Transcribe using openai-whisper (PyTorch) with DTW word timestamps."""
     import whisper  # raises ImportError if not installed → caller falls back
@@ -32,6 +33,7 @@ def run(
         initial_prompt=initial_prompt,
         beam_size=beam_size,
         temperature=temperature,
+        condition_on_previous_text=condition_on_previous_text,
         verbose=False,
     )
     return normalize_result(raw)
