@@ -1,120 +1,138 @@
 from __future__ import annotations
 
-import json
 import shutil
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .db import connect, migrate, transaction
+from .rows import insert_analysis, track_payload, unpack_flowmap
+
 
 class LibraryStore:
+    """Track library: one SQLite database for metadata and analyses, audio as files.
+
+    Layout under ``root``::
+
+        library.db              tracks, analyses (zlib flowmap), bars, sections
+        audio/<track_id>/       mix.<ext>, vocals.wav
+
+    Audio stays outside the database: SQLite reads blobs above ~100 KB slower than
+    plain files, and the WAVs are ~12 MB each.
+    """
+
     def __init__(self, root: Path) -> None:
         self.root = root
+        self.db_path = root / "library.db"
+        with self.connection():
+            pass  # creates the folder and runs migrations once
 
     def list_tracks(self) -> list[dict[str, Any]]:
-        if not self.root.exists():
-            return []
-        tracks = [meta for item in self.root.iterdir() if item.is_dir() for meta in [self.read_metadata(item.name)] if meta]
-        for meta in tracks:
-            if "bar_density" not in meta:
-                self._backfill_bar_density(meta)
-        return sorted(tracks, key=lambda item: item.get("created_at", ""), reverse=True)
+        with self.connection() as conn:
+            rows = conn.execute("SELECT * FROM tracks ORDER BY created_at DESC").fetchall()
+        return [self._payload(row) for row in rows]
 
     def read_metadata(self, track_id: str) -> dict[str, Any] | None:
-        path = self._metadata_path(track_id)
-        if not path.exists():
-            return None
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return None
-        data["id"] = track_id
-        return data
+        with self.connection() as conn:
+            row = conn.execute("SELECT * FROM tracks WHERE id = ?", (track_id,)).fetchone()
+        return self._payload(row) if row else None
 
     def save_track(self, *, track_id: str, title: str, flowmap: dict[str, Any], tmp_audio: Path, audio_suffix: str, mix_audio=None, vocals_audio=None):
-        track_dir = self.track_dir(track_id)
-        track_dir.mkdir(parents=True, exist_ok=True)
-        audio_path = self._write_mix(track_dir, tmp_audio, audio_suffix, mix_audio)
-        vocals_path = self._write_vocals(track_dir, vocals_audio)
-        flowmap["metadata"]["audio_path"] = str(audio_path)
-        self._flowmap_path(track_id).write_text(json.dumps(flowmap, ensure_ascii=False, indent=2), encoding="utf-8")
-        metadata = self._metadata(track_id, title, flowmap, vocals_path)
-        self._metadata_path(track_id).write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
-        return metadata, audio_path, vocals_path
+        audio_dir = self.track_dir(track_id)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            audio_path = self._write_mix(audio_dir, tmp_audio, audio_suffix, mix_audio)
+            vocals_path = self._write_vocals(audio_dir, vocals_audio)
+            flowmap["metadata"]["audio_path"] = str(audio_path)
+            self.add_track(track_id, title, flowmap, audio_path.name, vocals_path.name if vocals_path else None, _now())
+        except BaseException:
+            shutil.rmtree(audio_dir, ignore_errors=True)
+            raise
+        return self.read_metadata(track_id), audio_path, vocals_path
+
+    def add_track(self, track_id: str, title: str, flowmap: dict[str, Any], audio_file: str | None, vocals_file: str | None, created_at: str, conn: sqlite3.Connection | None = None) -> None:
+        """Insert a track whose audio already sits in ``track_dir(track_id)`` — one transaction."""
+        track = {"id": track_id, "title": title, "created_at": created_at, "audio_file": audio_file, "vocals_file": vocals_file}
+        if conn is not None:
+            insert_analysis(conn, track, flowmap, _now())
+            return
+        with self.connection() as own, transaction(own):
+            insert_analysis(own, track, flowmap, _now())
 
     def load_track(self, track_id: str):
-        metadata = self.read_metadata(track_id)
-        flowmap_path = self._flowmap_path(track_id)
-        if metadata is None or not flowmap_path.exists():
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT t.*, a.flowmap_zlib FROM tracks t JOIN analyses a ON a.track_id = t.id WHERE t.id = ?",
+                (track_id,),
+            ).fetchone()
+        if row is None:
             raise FileNotFoundError(track_id)
-        flowmap = json.loads(flowmap_path.read_text(encoding="utf-8"))
-        audio_path = Path(flowmap.get("metadata", {}).get("audio_path", ""))
-        vocals_path = self.track_dir(track_id) / "vocals.wav"
-        return flowmap, audio_path, vocals_path if vocals_path.exists() else None, metadata
+        flowmap = unpack_flowmap(row["flowmap_zlib"])
+        audio_path = self._file(track_id, row["audio_file"])
+        vocals_path = self._file(track_id, row["vocals_file"])
+        # Paths are resolved now, so moving the data folder never breaks playback.
+        flowmap.setdefault("metadata", {})["audio_path"] = str(audio_path) if audio_path else ""
+        return flowmap, audio_path or Path(""), vocals_path if vocals_path and vocals_path.exists() else None, self._payload(row)
 
     def delete_track(self, track_id: str) -> None:
-        track_dir = self.track_dir(track_id)
-        if not track_dir.exists() or not track_dir.is_dir():
+        with self.connection() as conn, transaction(conn):
+            deleted = conn.execute("DELETE FROM tracks WHERE id = ?", (track_id,)).rowcount
+        if not deleted:
             raise FileNotFoundError(track_id)
-        shutil.rmtree(track_dir)
+        shutil.rmtree(self.track_dir(track_id), ignore_errors=True)
 
     def track_dir(self, track_id: str) -> Path:
-        return self.root / track_id
+        return self.root / "audio" / track_id
 
-    def _backfill_bar_density(self, meta: dict[str, Any]) -> None:
-        flowmap_path = self._flowmap_path(meta["id"])
-        try:
-            flowmap = json.loads(flowmap_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return
-        meta["bar_density"] = bar_density(flowmap)
-        stored = {key: value for key, value in meta.items() if key != "id"}
-        stored["id"] = meta["id"]
-        self._metadata_path(meta["id"]).write_text(json.dumps(stored, ensure_ascii=False, indent=2), encoding="utf-8")
+    def connection(self):
+        """Open a short-lived connection (migrated, closed on exit): `with store.connection() as conn`."""
+        conn = connect(self.db_path)
+        migrate(conn)
+        return _Closing(conn)
 
-    def _metadata_path(self, track_id: str) -> Path:
-        return self.track_dir(track_id) / "metadata.json"
+    def _payload(self, row: sqlite3.Row) -> dict[str, Any]:
+        audio = self._file(row["id"], row["audio_file"])
+        vocals = self._file(row["id"], row["vocals_file"])
+        return track_payload(row, bool(audio and audio.exists()), bool(vocals and vocals.exists()))
 
-    def _flowmap_path(self, track_id: str) -> Path:
-        return self.track_dir(track_id) / "flowmap.json"
+    def _file(self, track_id: str, name: str | None) -> Path | None:
+        return self.track_dir(track_id) / name if name else None
 
-    def _write_mix(self, track_dir: Path, tmp_audio: Path, audio_suffix: str, mix_audio) -> Path:
+    def _write_mix(self, audio_dir: Path, tmp_audio: Path, audio_suffix: str, mix_audio) -> Path:
         if mix_audio is None:
-            audio_path = track_dir / f"audio{audio_suffix}"
-            tmp_audio.replace(audio_path)
+            audio_path = audio_dir / f"mix{audio_suffix}"
+            shutil.move(str(tmp_audio), audio_path)
             return audio_path
-
         import soundfile as sf
 
-        audio_path = track_dir / "audio.wav"
+        audio_path = audio_dir / "mix.wav"
         sf.write(audio_path, mix_audio.y, mix_audio.sr)
         tmp_audio.unlink(missing_ok=True)
         return audio_path
 
-    def _write_vocals(self, track_dir: Path, vocals_audio) -> Path | None:
+    def _write_vocals(self, audio_dir: Path, vocals_audio) -> Path | None:
         if vocals_audio is None:
             return None
         import soundfile as sf
-        vocals_path = track_dir / "vocals.wav"
+
+        vocals_path = audio_dir / "vocals.wav"
         sf.write(vocals_path, vocals_audio.y, vocals_audio.sr)
         return vocals_path
 
-    def _metadata(self, track_id: str, title: str, flowmap: dict[str, Any], vocals_path: Path | None) -> dict[str, Any]:
-        return {
-            "id": track_id,
-            "title": title,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "bpm": flowmap.get("metadata", {}).get("bpm", 0),
-            "duration": flowmap.get("metadata", {}).get("duration", 0),
-            "bars": len(flowmap.get("bars", [])),
-            "syllables": len(flowmap.get("syllables", [])),
-            "summary": flowmap.get("summary", {}),
-            "bar_density": bar_density(flowmap),
-            "has_audio": True,
-            "has_vocals": vocals_path is not None,
-        }
+
+class _Closing:
+    """``with store.connection() as conn`` that closes the connection on exit."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self.conn = conn
+
+    def __enter__(self) -> sqlite3.Connection:
+        return self.conn
+
+    def __exit__(self, *exc) -> None:
+        self.conn.close()
 
 
-def bar_density(flowmap: dict[str, Any]) -> list[float]:
-    """Per-bar density, rounded, for the library card mini-map."""
-    return [round(float(bar.get("density", 0) or 0), 2) for bar in flowmap.get("bars", [])]
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()

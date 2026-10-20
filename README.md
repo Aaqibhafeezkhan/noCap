@@ -126,6 +126,30 @@ Subsequent builds that skip the backend are much faster:
 
 ---
 
+## Where Your Data Lives
+
+The library is one SQLite database plus a folder of audio files, in the standard
+per-user app-data location:
+
+| Run | Folder |
+|-----|--------|
+| Installed app | `~/Library/Application Support/noCap/` |
+| Development (`nocap serve`, `npm run desktop:dev`) | `~/Library/Application Support/noCap-dev/` |
+
+```
+library.db            tracks, analyses (compressed flow maps), bars, sections
+audio/<track_id>/     mix.<ext>, vocals.wav
+```
+
+Set `NOCAP_DATA_DIR` to use another folder. To back up the library, copy the whole
+folder while the app is closed; to reset it, delete the folder.
+
+Tracks saved by earlier versions (`~/.nocap_library/tracks`) are copied in
+automatically on first start; the old folder is left untouched and can be deleted
+afterwards.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -133,6 +157,7 @@ Subsequent builds that skip the backend are much faster:
 | Desktop shell | Electron 33 |
 | Frontend | React 19, TypeScript, Pixi.js 8, Vite 6 |
 | Backend | Python / Flask 3 |
+| Library storage | SQLite (stdlib `sqlite3`, WAL) |
 | Beat detection | librosa 0.11 |
 | Transcription | openai-whisper (medium.en), MLX on Apple Silicon |
 | Vocal separation | Demucs 4 (htdemucs) |

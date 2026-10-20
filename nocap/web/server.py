@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 
 from nocap.library import LibraryStore
+from nocap.library.importer import import_legacy
+from nocap.library.paths import data_dir, legacy_dirs
 
 from .app import create_app, hydrate_state
 from .state import SessionState
@@ -16,13 +18,6 @@ def _frontend_dist() -> Path:
     return Path(__file__).resolve().parents[2] / 'frontend' / 'dist'
 
 
-def _library_dir() -> Path:
-    # In the packaged .app, store user data in home dir so it survives updates
-    if getattr(sys, 'frozen', False):
-        return Path.home() / '.nocap_library' / 'tracks'
-    return Path(__file__).resolve().parents[2] / '.nocap_library' / 'tracks'
-
-
 def start(
     flowmap_path: Path | None = None,
     audio_path: str | None = None,
@@ -31,7 +26,9 @@ def start(
     """Start the noCap web server."""
     try:
         state = SessionState()
-        store = LibraryStore(_library_dir())
+        store = LibraryStore(data_dir())
+        # One-time copy of tracks saved by earlier versions (old folders stay untouched).
+        import_legacy(store, legacy_dirs())
         hydrate_state(state, flowmap_path, audio_path)
         app = create_app(_frontend_dist(), store, state)
         app.run(host="localhost", port=port, debug=False, threaded=True)

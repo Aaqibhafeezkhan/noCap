@@ -49,7 +49,7 @@ class AnalyzeRouteCancelTest(unittest.TestCase):
             raise AssertionError("analysis was not cancelled")
 
         with tempfile.TemporaryDirectory() as tmp:
-            app = create_app(Path(tmp), LibraryStore(Path(tmp) / "tracks"), SessionState())
+            app = create_app(Path(tmp), LibraryStore(Path(tmp) / "data"), SessionState())
             client = app.test_client()
             with mock.patch("nocap.web.analysis_routes.analyze_track", fake_analyze), \
                  mock.patch("nocap.audio.separator.is_available", return_value=False):
@@ -67,13 +67,13 @@ class AnalyzeRouteCancelTest(unittest.TestCase):
                 self.assertEqual(200, cancel.status_code)
                 kinds = [_event(chunk)["type"] for chunk in stream]
                 self.assertEqual("cancelled", kinds[-1])
-                self.assertFalse((Path(tmp) / "tracks" / first["track_id"]).exists())
+                self.assertFalse((Path(tmp) / "data" / "audio" / first["track_id"]).exists())
 
     def test_cancel_unknown_job_is_404(self) -> None:
         from nocap.web.app import create_app
 
         with tempfile.TemporaryDirectory() as tmp:
-            app = create_app(Path(tmp), LibraryStore(Path(tmp) / "tracks"), SessionState())
+            app = create_app(Path(tmp), LibraryStore(Path(tmp) / "data"), SessionState())
             self.assertEqual(404, app.test_client().post("/api/analyze/nope/cancel").status_code)
 
 
