@@ -12,12 +12,15 @@ from nocap.library import LibraryStore
 from nocap.pipeline import AnalysisOptions, ProgressEvent, analyze_track
 from nocap.runtime import release_heavy_resources
 
+from .analysis_jobs import AnalysisCancelled, CancelRegistry, cancellable
 from .sse import safe_suffix, sse
 from .state import SessionState
 
 
 def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> None:
     from flask import Response, abort, request, stream_with_context
+
+    jobs = CancelRegistry()
 
     @app.route("/api/flowmap.json")
     def flowmap_api():
@@ -37,6 +40,7 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
         tmp_path = Path(tmp.name)
         title = Path(uploaded.filename).stem
         track_id = uuid.uuid4().hex
+        cancel_event = jobs.open(track_id)
 
         @stream_with_context
         def generate():
@@ -45,34 +49,57 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
             def run() -> None:
                 try:
                     from nocap.audio.separator import is_available as demucs_available
-                    result = analyze_track(tmp_path, AnalysisOptions(title=title, separate=demucs_available()), events.put)
+                    options = AnalysisOptions(title=title, separate=demucs_available())
+                    result = analyze_track(tmp_path, options, cancellable(events.put, cancel_event))
+                    if cancel_event.is_set():
+                        raise AnalysisCancelled()
                     events.put(("complete", result))
+                except AnalysisCancelled:
+                    _cleanup(store, track_id, tmp_path)
+                    events.put(("cancelled", None))
                 except Exception as exc:
                     events.put(("error", exc))
                 finally:
+                    jobs.close(track_id)
                     release_heavy_resources()
 
             threading.Thread(target=run, daemon=True).start()
-            while True:
-                item = events.get()
-                if isinstance(item, ProgressEvent):
-                    kwargs: dict = {"step": item.step, "msg": item.message, "done": item.done}
-                    if item.pct is not None:
-                        kwargs["pct"] = item.pct
-                    yield sse("progress", **kwargs)
-                    continue
-                kind, payload = item
-                if kind == "complete":
-                    yield _complete(payload, store, state, track_id, title, suffix, tmp_path)
+            finished = False
+            try:
+                yield sse("started", track_id=track_id, title=title)
+                while True:
+                    item = events.get()
+                    if isinstance(item, ProgressEvent):
+                        kwargs: dict = {"step": item.step, "msg": item.message, "done": item.done}
+                        if item.pct is not None:
+                            kwargs["pct"] = item.pct
+                        yield sse("progress", **kwargs)
+                        continue
+                    finished = True
+                    kind, payload = item
+                    if kind == "complete":
+                        yield _complete(payload, store, state, track_id, title, suffix, tmp_path)
+                    elif kind == "cancelled":
+                        yield sse("cancelled", track_id=track_id)
+                    else:
+                        yield _fail(payload, store, track_id, tmp_path)
                     return
-                yield _fail(payload, store, track_id, tmp_path)
-                return
+            finally:
+                # Client went away mid-analysis: stop the worker at its next checkpoint.
+                if not finished:
+                    jobs.cancel(track_id)
 
         return Response(generate(), mimetype="text/event-stream", headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
         })
+
+    @app.route("/api/analyze/<track_id>/cancel", methods=["POST"])
+    def analyze_cancel_api(track_id: str):
+        if not jobs.cancel(track_id):
+            abort(404)
+        return {"cancelling": True}
 
 def _complete(result, store: LibraryStore, state: SessionState, track_id: str, title: str, suffix: str, tmp_path: Path) -> str:
     metadata, audio_path, vocals_path = store.save_track(
@@ -89,8 +116,12 @@ def _complete(result, store: LibraryStore, state: SessionState, track_id: str, t
     return sse("complete", flowmap=result.flowmap, track=metadata, has_vocals=vocals_path is not None)
 
 
-def _fail(exc: object, store: LibraryStore, track_id: str, tmp_path: Path) -> str:
+def _cleanup(store: LibraryStore, track_id: str, tmp_path: Path) -> None:
     import shutil
     tmp_path.unlink(missing_ok=True)
     shutil.rmtree(store.track_dir(track_id), ignore_errors=True)
+
+
+def _fail(exc: object, store: LibraryStore, track_id: str, tmp_path: Path) -> str:
+    _cleanup(store, track_id, tmp_path)
     return sse("error", msg=str(exc), trace="".join(traceback.format_exception(exc)))

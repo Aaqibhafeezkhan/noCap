@@ -177,6 +177,9 @@ function createWindow() {
 // ---------------------------------------------------------------------------
 // macOS menu (minimal native menu so keyboard shortcuts work)
 // ---------------------------------------------------------------------------
+function sendCanvasZoom(direction) {
+    mainWindow === null || mainWindow === void 0 ? void 0 : mainWindow.webContents.send('nocap:canvas-zoom', direction);
+}
 function buildMenu() {
     var template = [
         {
@@ -207,9 +210,11 @@ function buildMenu() {
                 { role: 'reload' },
                 { role: 'forceReload' },
                 { type: 'separator' },
-                { role: 'resetZoom' },
-                { role: 'zoomIn' },
-                { role: 'zoomOut' },
+                // Zoom drives the flow canvas, not the page (handled in the renderer).
+                { label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: function () { return sendCanvasZoom(0); } },
+                { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: function () { return sendCanvasZoom(1); } },
+                { label: 'Zoom In', accelerator: 'CmdOrCtrl+=', visible: false, acceleratorWorksWhenHidden: true, click: function () { return sendCanvasZoom(1); } },
+                { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: function () { return sendCanvasZoom(-1); } },
                 { type: 'separator' },
                 { role: 'togglefullscreen' }
             ], (isDev ? [{ role: 'toggleDevTools' }] : []), true),

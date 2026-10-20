@@ -1,0 +1,106 @@
+/* Design tokens. Canvas colours are mirrored in src/flow/theme.ts. */
+:root {
+  color-scheme: dark;
+
+  --bg: #0a0a0b;
+  --bg-2: #0f0f12;
+  --surface: #141418;
+  --surface-2: #1b1b20;
+  --surface-3: #23232a;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --border-hover: rgba(255, 255, 255, 0.24);
+
+  /* Text: --muted keeps ≥4.5:1 on --bg-2 and --surface (WCAG AA). --faint is decorative only. */
+  --text: #f2f2f3;
+  --text-2: #b4b4bd;
+  --muted: #8a8a94;
+  --faint: #55555f;
+
+  --accent: #ff3d00;
+  --accent-hover: #ff5a26;
+  --accent-soft: rgba(255, 61, 0, 0.14);
+  --accent-line: rgba(255, 61, 0, 0.55);
+  --ok: #5ee6a0;
+  --warn: #ffd23f;
+  --danger: #ff5c5c;
+  --info: #3fb8ff;
+
+  --rh-a: #ff4f9a;
+  --rh-b: #3fb8ff;
+  --rh-c: #5ee6a0;
+  --rh-d: #ffd23f;
+  --rh-e: #b266ff;
+  --rh-f: #ff8a3d;
+  --rh-g: #eaff00;
+  --rh-h: #ccffff;
+  --rh-none: #3a3a42;
+
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-15: 15px;
+  --fs-20: 20px;
+  --fs-28: 28px;
+
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --header-h: 56px;
+  --player-h: 60px;
+  --shadow-pop: 0 18px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-strong);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-13);
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+h1, h2, h3, p, ol, ul, dl, dd, figure { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border-strong); border-bottom-width: 2px;
+  background: var(--surface-2); color: var(--text-2);
+  font: 500 var(--fs-11) var(--font-mono);
+}
+.num, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: var(--radius-sm); }
+:focus:not(:focus-visible) { outline: none; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border: 2px solid var(--bg); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #33333c; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+.app-shell { position: relative; height: 100%; display: flex; flex-direction: column; }
+
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

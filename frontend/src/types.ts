@@ -156,9 +156,13 @@ export interface LibraryTrack {
   has_audio: boolean;
   has_vocals: boolean;
   summary: FlowMap['summary'];
+  /** Per-bar density for the library mini-map; absent on very old entries. */
+  bar_density?: number[];
 }
 
 export type AnalyzeMessage =
+  | { type: 'started'; track_id: string; title: string }
+  | { type: 'cancelled'; track_id: string }
   | { type: 'progress'; step: StepId; msg?: string; done?: boolean; pct?: number }
   | { type: 'complete'; flowmap: FlowMap; track?: LibraryTrack; has_vocals: boolean }
   | { type: 'error'; msg: string; trace?: string };

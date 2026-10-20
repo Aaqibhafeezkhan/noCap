@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { t } from '../i18n';
 
 interface Props {
   children: ReactNode;
@@ -22,8 +23,11 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <main className="upload-screen">
-          <pre className="error-panel">{this.state.error.message}</pre>
+        <main className="error-screen" role="alert">
+          <h1>{t('error.title')}</h1>
+          <p>{t('error.body')}</p>
+          <pre>{this.state.error.message}</pre>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>{t('error.reload')}</button>
         </main>
       );
     }

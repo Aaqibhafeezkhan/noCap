@@ -2,21 +2,6 @@ import type { AnalyzeMessage, FlowMap, LibraryTrack } from '../types';
 import { normalizeFlowMap } from '../flow/normalize';
 import { t } from '../i18n';
 
-export async function fetchFlowmap(): Promise<FlowMap | null> {
-  const res = await fetch('/api/flowmap.json');
-  if (!res.ok) return null;
-  return normalizeFlowMap(await res.json()) as FlowMap;
-}
-
-export async function hasAudio(): Promise<boolean> {
-  try {
-    const res = await fetch('/api/audio', { method: 'HEAD' });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export async function fetchLibrary(): Promise<LibraryTrack[]> {
   const res = await fetch('/api/library');
   if (!res.ok) return [];
@@ -49,14 +34,19 @@ export async function deleteLibraryTrack(trackId: string): Promise<void> {
   if (!res.ok) throw new Error(t('api.deleteTrackFailed', { status: res.status }));
 }
 
+export async function cancelAnalysis(trackId: string): Promise<void> {
+  await fetch(`/api/analyze/${encodeURIComponent(trackId)}/cancel`, { method: 'POST' });
+}
+
 export async function analyzeTrack(
   file: File,
   onMessage: (message: AnalyzeMessage) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const form = new FormData();
   form.append('audio', file);
 
-  const response = await fetch('/api/analyze', { method: 'POST', body: form });
+  const response = await fetch('/api/analyze', { method: 'POST', body: form, signal });
   if (!response.ok || !response.body) {
     throw new Error(t('api.analyzeFailed', { status: response.status }));
   }

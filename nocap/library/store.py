@@ -15,6 +15,9 @@ class LibraryStore:
         if not self.root.exists():
             return []
         tracks = [meta for item in self.root.iterdir() if item.is_dir() for meta in [self.read_metadata(item.name)] if meta]
+        for meta in tracks:
+            if "bar_density" not in meta:
+                self._backfill_bar_density(meta)
         return sorted(tracks, key=lambda item: item.get("created_at", ""), reverse=True)
 
     def read_metadata(self, track_id: str) -> dict[str, Any] | None:
@@ -58,6 +61,17 @@ class LibraryStore:
     def track_dir(self, track_id: str) -> Path:
         return self.root / track_id
 
+    def _backfill_bar_density(self, meta: dict[str, Any]) -> None:
+        flowmap_path = self._flowmap_path(meta["id"])
+        try:
+            flowmap = json.loads(flowmap_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        meta["bar_density"] = bar_density(flowmap)
+        stored = {key: value for key, value in meta.items() if key != "id"}
+        stored["id"] = meta["id"]
+        self._metadata_path(meta["id"]).write_text(json.dumps(stored, ensure_ascii=False, indent=2), encoding="utf-8")
+
     def _metadata_path(self, track_id: str) -> Path:
         return self.track_dir(track_id) / "metadata.json"
 
@@ -95,6 +109,12 @@ class LibraryStore:
             "bars": len(flowmap.get("bars", [])),
             "syllables": len(flowmap.get("syllables", [])),
             "summary": flowmap.get("summary", {}),
+            "bar_density": bar_density(flowmap),
             "has_audio": True,
             "has_vocals": vocals_path is not None,
         }
+
+
+def bar_density(flowmap: dict[str, Any]) -> list[float]:
+    """Per-bar density, rounded, for the library card mini-map."""
+    return [round(float(bar.get("density", 0) or 0), 2) for bar in flowmap.get("bars", [])]
