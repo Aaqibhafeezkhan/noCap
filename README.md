@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/screens/flow.png" alt="noCap flow map" width="900" />
+  <img src="docs/assets/nocap-demo.gif" alt="noCap demo: syllables on the beat grid, rhyme groups lighting up, the bar inspector, zoom and the report page" width="900" />
 </p>
 
 ---
