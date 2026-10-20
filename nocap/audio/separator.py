@@ -23,15 +23,15 @@ def separate(audio: AudioData, model_name: str = "htdemucs") -> AudioData:
     """Isolate vocals using Demucs. Returns a vocals-only AudioData."""
     try:
         import torch
-        from demucs.pretrained import get_model
         from demucs.apply import apply_model
+        from nocap.audio.demucs_models import load_model
     except ImportError as e:
         raise ImportError(msg("separator.needDemucs")) from e
 
     import numpy as np
     import librosa
 
-    model = get_model(model_name)
+    model = load_model(model_name)
     model.eval()
 
     target_sr = model.samplerate

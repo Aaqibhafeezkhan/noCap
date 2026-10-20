@@ -8,7 +8,8 @@
 #
 # Prerequisites (one-time setup already done):
 #   - .venv with project deps + openai-whisper + demucs installed
-#   - Whisper model cached at ~/.cache/whisper/
+#   - Whisper model cached at ~/.cache/whisper/ (downloaded if missing)
+#   - Demucs htdemucs weights in torch.hub's cache (downloaded if missing)
 #   - Node.js + npm installed
 
 set -euo pipefail
@@ -65,6 +66,14 @@ if [ -z "$WHISPER_MODEL" ]; then
 fi
 
 echo "  Whisper model copied to build/whisper_models/"
+
+# ── 1b. Copy Demucs (htdemucs) weights ────────────────────────────────────────
+# Bundled in torch.hub layout (checkpoints/*.th) so vocal separation never
+# downloads on a user's Mac. Uses torch.hub's cache, downloading if needed.
+
+echo "▶ Demucs model   : htdemucs"
+(cd "$PROJECT_ROOT" && "$VENV_PYTHON" -m nocap.audio.demucs_models "$BUILD_DIR/demucs_models" htdemucs)
+echo "  Demucs model copied to build/demucs_models/"
 
 # ── 2. Build React frontend (must run BEFORE PyInstaller) ─────────────────────
 # Flask serves the React app from inside the PyInstaller bundle.
