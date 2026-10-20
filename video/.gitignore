@@ -1,0 +1,6 @@
+node_modules/
+out/
+public/clips/
+public/audio/
+capture/frames/
+capture/frames.json
