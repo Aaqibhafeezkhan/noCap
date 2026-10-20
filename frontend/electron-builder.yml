@@ -32,14 +32,15 @@ afterPack: scripts/after-pack.cjs
 mac:
   category: public.app-category.music
   icon: build/icon.icns
-  # No Developer ID certificate: skip electron-builder signing (it would otherwise pick
-  # any local "Apple Development" cert, which other Macs do not trust). The afterPack
-  # hook ad-hoc signs instead. Set an identity here once a Developer ID is available.
+  # Default: no electron-builder signing (it would otherwise pick a local "Apple
+  # Development" cert, which other Macs do not trust); the afterPack hook ad-hoc signs.
+  # scripts/build-desktop.sh overrides this with the Keychain's "Developer ID
+  # Application" identity and notarizes when one is available.
   identity: null
   hardenedRuntime: true
   gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
+  entitlements: signing/entitlements.mac.plist
+  entitlementsInherit: signing/entitlements.mac.plist
   # The PyInstaller backend is built for the host CPU (Apple Silicon), so only arm64
   # packages work; an x64 app would ship an arm64 backend.
   target:
