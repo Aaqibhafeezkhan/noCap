@@ -95,6 +95,11 @@ if [ "$SKIP_BACKEND" = false ]; then
   rm -rf "$BACKEND_OUT/nocap-server"
 
   cd "$PROJECT_ROOT"
+  # Bundle the MLX whisper backend when it is installed (Apple Silicon).
+  MLX_COLLECT=""
+  if "$VENV_PYTHON" -c "import mlx_whisper" &>/dev/null; then
+    MLX_COLLECT="--collect-all mlx --collect-all mlx_whisper"
+  fi
   "$VENV_DIR/bin/pyinstaller" \
     --name nocap-server \
     --onedir \
@@ -104,6 +109,7 @@ if [ "$SKIP_BACKEND" = false ]; then
     --specpath "/tmp/nocap-pyinstaller-spec" \
     --add-data "$FRONTEND_DIR/dist:frontend_dist" \
     --collect-all whisper \
+    $MLX_COLLECT \
     --collect-all librosa \
     --collect-all numba \
     --collect-all llvmlite \

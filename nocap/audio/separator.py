@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from nocap.i18n import msg
 from nocap.audio.loader import AudioData
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -41,14 +44,13 @@ def separate(audio: AudioData, model_name: str = "htdemucs") -> AudioData:
 
     wav_tensor = torch.tensor(wav, dtype=torch.float32).unsqueeze(0)  # (1, C, T)
 
-    with torch.no_grad():
-        sources = apply_model(model, wav_tensor, device="cpu", progress=False)
+    sources = _apply_on_best_device(apply_model, model, wav_tensor)
     # sources shape: (1, num_sources, C, T)
     # model.sources is list like ['drums','bass','other','vocals']
     vocal_idx = model.sources.index("vocals")
     vocals = sources[0, vocal_idx]  # (C, T)
 
-    vocals_np = vocals.mean(dim=0).numpy()  # stereo → mono
+    vocals_np = vocals.mean(dim=0).cpu().numpy()  # stereo → mono
     vocals_np = librosa.resample(vocals_np, orig_sr=target_sr, target_sr=audio.sr)
 
     return AudioData(
@@ -57,6 +59,34 @@ def separate(audio: AudioData, model_name: str = "htdemucs") -> AudioData:
         duration=len(vocals_np) / audio.sr,
         path=audio.path,
     )
+
+
+def separation_device() -> str:
+    """Pick the Demucs device: NOCAP_DEMUCS_DEVICE, else CUDA, else MPS, else CPU."""
+    import os
+    import torch
+
+    forced = os.environ.get("NOCAP_DEMUCS_DEVICE", "").strip().lower()
+    if forced:
+        return forced
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def _apply_on_best_device(apply_model, model, wav_tensor):
+    import torch
+
+    device = separation_device()
+    with torch.no_grad():
+        if device != "cpu":
+            try:
+                return apply_model(model, wav_tensor, device=device, progress=False)
+            except RuntimeError as exc:  # unsupported op / out of GPU memory
+                logger.warning("Demucs on %s failed, retrying on CPU: %s", device, exc)
+        return apply_model(model, wav_tensor, device="cpu", progress=False)
 
 
 def assess_vocal_stem(vocals: AudioData, mix: AudioData) -> StemQuality:

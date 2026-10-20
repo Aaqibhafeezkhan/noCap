@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 import os
 import re
 import shutil
@@ -52,6 +53,8 @@ DEFAULT_WHISPER_CPP_MODEL_PATH = (
     / "ggml-medium.en.bin"
 )
 
+logger = logging.getLogger(__name__)
+
 HIP_HOP_PROMPT = None  # prompt causes hallucination on vocal stems; omit
 
 
@@ -71,27 +74,14 @@ def transcribe(
 
     audio_arr = _resample_to_16k(audio)
 
-    # Prefer openai-whisper (PyTorch) when available: it uses cross-attention DTW
-    # for word_timestamps, giving ~10 ms accuracy.  whisper.cpp timestamps are
-    # quantised to 20 ms and its -dtw flag has known reliability bugs (t_dtw = -1).
-    try:
-        result = _run_openai_whisper(
-            audio_arr,
-            language=language,
-            initial_prompt=initial_prompt,
-            beam_size=beam_size,
-            temperature=temperature,
-        )
-    except ImportError:
-        result = _run_whisper_cpp(
-            audio_arr,
-            language=language,
-            initial_prompt=initial_prompt,
-            beam_size=beam_size,
-            temperature=temperature,
-            whisper_progress_callback=whisper_progress_callback,
-        )
-
+    result = _run_backends(
+        audio_arr,
+        language=language,
+        initial_prompt=initial_prompt,
+        beam_size=beam_size,
+        temperature=temperature,
+        whisper_progress_callback=whisper_progress_callback,
+    )
     words = _filter_words(_extract_words(result))
     timed_lines = _segments_to_timed_lines(result)
 
@@ -153,95 +143,31 @@ def _resample_to_16k(audio: AudioData):
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _run_openai_whisper(
-    audio_arr,
-    *,
-    language: str | None,
-    initial_prompt: str | None,
-    beam_size: int,
-    temperature: float,
-) -> dict:
-    """Transcribe using openai-whisper (PyTorch) with DTW word timestamps."""
-    import whisper  # raises ImportError if not installed → falls back to whisper.cpp
+def _run_backends(audio_arr, *, whisper_progress_callback=None, **options) -> dict:
+    """Run the first working backend: MLX (Apple GPU) → openai-whisper → whisper.cpp.
 
-    device = _torch_device()
-    model_name = _openai_whisper_model_name()
-    bundled = _bundled_whisper_dir()
-    model = whisper.load_model(
-        model_name, device=device,
-        download_root=str(bundled) if bundled else None,
-    )
+    Both Python backends use cross-attention DTW for word timestamps (~10 ms);
+    whisper.cpp timestamps are quantised to 20 ms and its -dtw flag is less
+    reliable, so it is the last resort. NOCAP_WHISPER_BACKEND=mlx|torch|cpp
+    pins one backend. MLX decodes greedily, so beam_size only applies to the others.
+    """
+    from nocap.audio import whisper_mlx, whisper_torch
 
-    raw = whisper.transcribe(
-        model,
-        audio_arr,
-        language=language,
-        word_timestamps=True,
-        initial_prompt=initial_prompt,
-        beam_size=beam_size,
-        temperature=temperature,
-        verbose=False,
-    )
-
-    segments = []
-    for seg in raw.get("segments", []):
-        words = [
-            {
-                "word": w.get("word", "").strip(),
-                "start": float(w.get("start", 0.0)),
-                "end": float(w.get("end", 0.0)),
-                "probability": float(w.get("probability", 1.0)),
-            }
-            for w in seg.get("words", [])
-        ]
-        segments.append({
-            "text": seg.get("text", "").strip(),
-            "start": float(seg.get("start", 0.0)),
-            "end": float(seg.get("end", 0.0)),
-            "words": words,
-        })
-
-    return {
-        "text": raw.get("text", "").strip(),
-        "language": raw.get("language", "en"),
-        "segments": segments,
-    }
-
-
-def _bundled_whisper_dir() -> Path | None:
-    """Return the whisper models dir shipped inside the app bundle, or None in dev mode."""
-    resources = os.environ.get("NOCAP_RESOURCES")
-    if resources:
-        d = Path(resources) / "whisper_models"
-        if d.exists():
-            return d
-    return None
-
-
-@functools.lru_cache(maxsize=None)
-def _openai_whisper_model_name() -> str:
-    """Return the model name to use for openai-whisper (prefers already-cached models)."""
-    bundled = _bundled_whisper_dir()
-    search_dir = bundled if bundled else Path(os.path.expanduser("~/.cache/whisper"))
-    for name in ("medium.en", "medium"):
-        if (search_dir / f"{name}.pt").exists():
-            return name
-    if bundled:
-        raise FileNotFoundError(msg("audio.needWhisperModel", path=search_dir))
-    return "medium.en"  # will be downloaded on first run
-
-
-@functools.lru_cache(maxsize=None)
-def _torch_device() -> str:
-    # MPS (Apple Silicon) is intentionally skipped: openai-whisper internally
-    # creates float64 tensors which MPS does not support, causing a runtime error.
-    try:
-        import torch
-        if torch.cuda.is_available():
-            return "cuda"
-    except ImportError:
-        pass
-    return "cpu"
+    choice = os.environ.get("NOCAP_WHISPER_BACKEND", "auto").strip().lower()
+    if choice in ("auto", "mlx") and whisper_mlx.is_available():
+        mlx_options = {k: v for k, v in options.items() if k != "beam_size"}
+        try:
+            return whisper_mlx.run(audio_arr, **mlx_options)
+        except Exception as exc:  # GPU/conversion problems must not fail the analysis
+            if choice == "mlx":
+                raise
+            logger.warning("MLX whisper failed, falling back to PyTorch: %s", exc)
+    if choice != "cpp":
+        try:
+            return whisper_torch.run(audio_arr, **options)
+        except ImportError:
+            pass
+    return _run_whisper_cpp(audio_arr, whisper_progress_callback=whisper_progress_callback, **options)
 
 
 def _run_whisper_cpp(

@@ -74,6 +74,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev,separator]"
 pip install openai-whisper
+pip install -e ".[apple]"   # Apple Silicon only: GPU transcription via MLX
 
 # 3. Frontend dependencies
 cd frontend && npm install && cd ..
@@ -84,6 +85,12 @@ cd frontend && npm run desktop:dev
 
 The first time you analyze a track, Whisper will download the `medium.en`
 model (~1.5 GB) into `~/.cache/whisper/`. Subsequent runs use the cache.
+
+On Apple Silicon, analysis runs on the GPU: Demucs uses MPS and, with the
+`apple` extra installed, Whisper runs through MLX from the same checkpoint (same
+DTW word timestamps, greedy decoding). Anything that fails on the GPU falls back
+to the CPU. `NOCAP_WHISPER_BACKEND=mlx|torch|cpp` and `NOCAP_DEMUCS_DEVICE=cpu`
+pin a backend or device.
 
 ### Web-only mode (no Electron)
 
@@ -127,7 +134,7 @@ Subsequent builds that skip the backend are much faster:
 | Frontend | React 19, TypeScript, Pixi.js 8, Vite 6 |
 | Backend | Python / Flask 3 |
 | Beat detection | librosa 0.11 |
-| Transcription | openai-whisper (medium.en) |
+| Transcription | openai-whisper (medium.en), MLX on Apple Silicon |
 | Vocal separation | Demucs 4 (htdemucs) |
 | Syllable/stress | CMU Pronouncing Dictionary |
 | Packaging | PyInstaller + electron-builder |
