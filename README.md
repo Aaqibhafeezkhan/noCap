@@ -10,14 +10,15 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple" alt="platform" />
-  <img src="https://img.shields.io/badge/python-3.10+-blue?logo=python" alt="python" />
+  <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><img src="https://img.shields.io/github/v/release/fatihserhatturan/noCap?label=release&color=ff3d00" alt="latest release" /></a>
+  <img src="https://img.shields.io/badge/macOS-Apple%20Silicon-lightgrey?logo=apple" alt="macOS on Apple Silicon" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
 </p>
 
 <p align="center">
   <a href="https://fatihserhatturan.github.io/noCap/"><strong>Website</strong></a> ·
-  <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><strong>Download for macOS</strong></a>
+  <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><strong>Download for macOS</strong></a> ·
+  <a href="https://fatihserhatturan.github.io/noCap/#watch"><strong>Watch the 45-second promo</strong></a>
 </p>
 
 <p align="center">
@@ -38,6 +39,21 @@ hear exactly how a rapper rides the beat.
 - How much syncopation is there?
 - Is the delivery ahead, on, or behind the pocket?
 - Where do the rhyme chains land on the grid?
+
+Flow is the part of rap that is hardest to put into words. Producers, rappers and
+fans describe it by ear: "laid back", "on top of the beat", "double time". noCap
+makes it something you can point at, bar by bar.
+
+---
+
+## Install
+
+1. Download the latest `.dmg` from [Releases](https://github.com/fatihserhatturan/noCap/releases/latest).
+2. Open it and drag **noCap** into Applications.
+3. Drop in an audio file, or press **Try the demo** to explore a sample verse first.
+
+Needs a Mac with Apple Silicon (M1 or later). The app is signed and notarized by
+Apple, everything it needs is bundled, and analysis runs offline on your Mac.
 
 ---
 
@@ -200,3 +216,18 @@ cd frontend && npm run typecheck && npm run build
 
 ---
 
+## Contributing
+
+Bug reports, ideas and pull requests are welcome.
+
+- Found a problem or have an idea? Open an [issue](https://github.com/fatihserhatturan/noCap/issues), or start a thread in [Discussions](https://github.com/fatihserhatturan/noCap/discussions).
+- Want to write code? Issues labelled [`good first issue`](https://github.com/fatihserhatturan/noCap/labels/good%20first%20issue) are a good place to start. See [Development](#development) to run it locally, and `CODE_QUALITY.md` for the house rules.
+
+## Roadmap
+
+- Builds for Intel Macs and Windows
+- Better support for lyrics in languages other than English
+- Comparing two verses or two rappers side by side
+- More export formats for the flow map and the report
+
+If noCap is useful to you, a star helps other people find it.
