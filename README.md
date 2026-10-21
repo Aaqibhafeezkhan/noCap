@@ -68,6 +68,9 @@ Apple, everything it needs is bundled, and analysis runs offline on your Mac.
 - **Interactive visualization** — WebGL canvas (Pixi.js), hover tooltips, click-to-play
 - **Library** — save and re-open analyzed tracks
 - **macOS desktop app** — self-contained Electron + PyInstaller bundle (no setup required)
+
+---
+
 ## Keyboard shortcuts
 
 Press `?` in the app to see this list at any time. Shortcuts are ignored while you are typing in a field or while a dialog is open.
@@ -91,7 +94,6 @@ Press `?` in the app to see this list at any time. Shortcuts are ignored while y
 
 On Windows and Linux, use `Ctrl` in place of `⌘`.
 
----
 ---
 
 ## Getting Started
