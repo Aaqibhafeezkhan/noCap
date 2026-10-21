@@ -71,6 +71,31 @@ Apple, everything it needs is bundled, and analysis runs offline on your Mac.
 
 ---
 
+## Keyboard shortcuts
+
+Press `?` in the app to see this list at any time. Shortcuts are ignored while you are typing in a field or while a dialog is open.
+
+| Group | Keys | Action |
+|---|---|---|
+| Playback | `Space` | Play / pause |
+| Playback | `Enter` | Play selected bars |
+| Playback | `L` | Loop selected bars |
+| Playback | `V` | Switch mix / vocals |
+| Navigation | `←` `→` | Previous / next bar |
+| Navigation | `⇧` + click | Extend selection |
+| Navigation | `↑` `↓` | Scroll |
+| Navigation | `Esc` | Clear rhyme focus, then selection |
+| View | `⌘` `+` | Zoom in |
+| View | `⌘` `−` | Zoom out |
+| View | `⌘` `0` | Reset zoom |
+| View | `I` | Show / hide inspector |
+| View | `1` `2` `3` | Flow / Report / Library |
+| View | `?` | This list |
+
+On Windows and Linux, use `Ctrl` in place of `⌘`.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
