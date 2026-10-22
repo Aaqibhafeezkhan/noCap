@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MAX_LINES = 200
 SUFFIXES = {".py", ".ts", ".tsx", ".css"}
-SKIP_PARTS = {"node_modules", "dist", "build", ".git", "__pycache__"}
+SKIP_PARTS = {"node_modules", "dist", "build", ".git", "__pycache__", ".venv"}
 
 
 def main() -> int:

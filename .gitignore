@@ -71,3 +71,7 @@ separated/
 # Audio temp files
 *.tmp.mp3
 *.tmp.wav
+
+# Accuracy benchmark: downloaded audio, reference lyrics and analysis output stay local
+benchmark/data/
+benchmark/results/
