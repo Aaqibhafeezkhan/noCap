@@ -60,6 +60,17 @@ class LibraryStore:
         with self.connection() as own, transaction(own):
             insert_analysis(own, track, flowmap, _now())
 
+    def replace_analysis(self, track_id: str, flowmap: dict[str, Any]) -> dict[str, Any]:
+        """Swap in a new analysis for a track (e.g. after editing its lyrics); audio is kept."""
+        with self.connection() as conn, transaction(conn):
+            row = conn.execute("SELECT * FROM tracks WHERE id = ?", (track_id,)).fetchone()
+            if row is None:
+                raise FileNotFoundError(track_id)
+            track = {key: row[key] for key in ("id", "title", "created_at", "audio_file", "vocals_file")}
+            conn.execute("DELETE FROM tracks WHERE id = ?", (track_id,))  # analyses, bars, sections cascade
+            insert_analysis(conn, track, flowmap, _now())
+        return self.read_metadata(track_id)
+
     def load_track(self, track_id: str):
         with self.connection() as conn:
             row = conn.execute(

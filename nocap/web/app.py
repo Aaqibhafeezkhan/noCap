@@ -8,6 +8,7 @@ from nocap.library import LibraryStore
 
 from .analysis_routes import register_analysis_routes
 from .library_routes import register_library_routes
+from .lyrics_routes import register_lyrics_routes
 from .media_routes import register_media_routes
 from .state import SessionState
 
@@ -19,6 +20,7 @@ def create_app(frontend_dist: Path, store: LibraryStore, state: SessionState):
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     register_analysis_routes(app, store, state)
     register_library_routes(app, store, state)
+    register_lyrics_routes(app, store, state)
     register_media_routes(app, state, frontend_dist)
     return app
 

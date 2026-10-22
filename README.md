@@ -89,7 +89,7 @@ Press `?` in the app to see this list at any time. Shortcuts are ignored while y
 | View | `⌘` `−` | Zoom out |
 | View | `⌘` `0` | Reset zoom |
 | View | `I` | Show / hide inspector |
-| View | `1` `2` `3` | Flow / Report / Library |
+| View | `1` `2` `3` `4` | Flow / Report / Lyrics / Library |
 | View | `?` | This list |
 
 On Windows and Linux, use `Ctrl` in place of `⌘`.

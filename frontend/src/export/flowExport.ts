@@ -95,7 +95,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function downloadBlob(blob: Blob, filename: string): void {
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -106,7 +106,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-function safeName(value: string): string {
+export function safeName(value: string): string {
   return (value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'nocap-flowmap';
 }
 

@@ -1,11 +1,11 @@
-import { BarChart3, Library, PanelRight, Route } from 'lucide-react';
+import { BarChart3, Library, PanelRight, Route, ScrollText } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { t } from '../../i18n';
 import type { FlowMap } from '../../types';
 import { formatTime } from '../player/format';
 import logoUrl from '../../../../source/logo-transparent.png';
 
-export type AppMode = 'library' | 'viewer' | 'report';
+export type AppMode = 'library' | 'viewer' | 'report' | 'lyrics';
 
 export function TopBar({ mode, flowmap, isDemo, onModeChange, actions, inspectorOpen, onInspectorToggle }: {
   mode: AppMode;
@@ -51,6 +51,9 @@ export function TopBar({ mode, flowmap, isDemo, onModeChange, actions, inspector
             </button>
             <button className={mode === 'report' ? 'is-active' : ''} aria-current={mode === 'report' ? 'page' : undefined} onClick={() => onModeChange('report')}>
               <BarChart3 size={14} /> {t('app.nav.report')}
+            </button>
+            <button className={mode === 'lyrics' ? 'is-active' : ''} aria-current={mode === 'lyrics' ? 'page' : undefined} onClick={() => onModeChange('lyrics')}>
+              <ScrollText size={14} /> {t('app.nav.lyrics')}
             </button>
             <button className={mode === 'library' ? 'is-active' : ''} aria-current={mode === 'library' ? 'page' : undefined} onClick={() => onModeChange('library')}>
               <Library size={14} /> {t('app.nav.library')}

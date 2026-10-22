@@ -10,7 +10,7 @@ export interface ShortcutHandlers {
   clear?: () => void;
   zoom?: (direction: -1 | 0 | 1) => void;
   toggleInspector?: () => void;
-  screen?: (index: 1 | 2 | 3) => void;
+  screen?: (index: 1 | 2 | 3 | 4) => void;
   help?: () => void;
 }
 
@@ -61,7 +61,8 @@ export function useShortcuts(handlers: ShortcutHandlers) {
         case '1':
         case '2':
         case '3':
-          if (h.screen) run(event, () => h.screen?.(Number(event.key) as 1 | 2 | 3));
+        case '4':
+          if (h.screen) run(event, () => h.screen?.(Number(event.key) as 1 | 2 | 3 | 4));
           return;
       }
       const key = event.key.toLowerCase();
