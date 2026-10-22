@@ -92,5 +92,24 @@ class LoopGuardTest(unittest.TestCase):
         self.assertEqual([], result["segments"])
 
 
+class StemDecodingTest(unittest.TestCase):
+    def test_stem_options_allow_fallback_without_silence_override(self) -> None:
+        from nocap.audio import stem_decoding
+        base = {"temperature": 0.0, "beam_size": 5}
+        self.assertEqual(base, stem_decoding.options(base, vocal_stem=False))
+        stem_opts = stem_decoding.options(base, vocal_stem=True)
+        self.assertIsNone(stem_opts["no_speech_threshold"])
+        self.assertEqual(0.0, stem_opts["temperature"][0])
+        self.assertEqual(0.0, stem_decoding.first_temperature(stem_opts["temperature"]))
+
+    def test_segments_decoded_only_at_the_last_temperature_are_dropped(self) -> None:
+        from nocap.audio.whisper_torch import normalize_result
+        raw = {"text": "", "segments": [
+            {"text": "real", "start": 0, "end": 1, "temperature": 0.2, "words": [{"word": "real", "start": 0, "end": 1}]},
+            {"text": "noise", "start": 1, "end": 2, "temperature": 1.0, "words": [{"word": "noise", "start": 1, "end": 2}]},
+        ]}
+        self.assertEqual(["real"], [seg["text"] for seg in normalize_result(raw)["segments"]])
+
+
 if __name__ == "__main__":
     unittest.main()

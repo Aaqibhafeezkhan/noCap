@@ -77,6 +77,52 @@ class RepairTest(unittest.TestCase):
 
         self.assertEqual(len(gap_repair.repair(audio, words, decode)), len(words))
 
+    def test_repair_continues_after_whisper_stops_early(self) -> None:
+        # A short phrase, then Whisper ends the decode: the rest of the hole is retried.
+        audio = _stem(40, [(2, 38)])
+        words = _every_half_second(2, 5) + _every_half_second(35, 38)
+        calls: list[int] = []
+
+        def decode(clip):
+            calls.append(len(clip))
+            if len(calls) == 1:
+                return _words(("intro", 0.3, 0.8))  # stops after the first phrase
+            return [TranscriptWord("bar", t, t + 0.4) for t in np.arange(0.3, 8.0, 0.5)]
+
+        repaired = gap_repair.repair(audio, words, decode)
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertTrue(any(w.word == "intro" for w in repaired))
+        self.assertGreater(sum(w.word == "bar" for w in repaired), 10)
+
+    def test_empty_pass_is_retried_a_few_seconds_later(self) -> None:
+        audio = _stem(40, [(2, 38)])
+        words = _every_half_second(2, 5) + _every_half_second(35, 38)
+        calls: list[int] = []
+
+        def decode(clip):
+            calls.append(len(clip))
+            if len(calls) == 1:
+                return []  # e.g. a producer tag at the start of the hole blocks the decode
+            return [TranscriptWord("bar", t, t + 0.4) for t in np.arange(0.3, 25.0, 0.5)]
+
+        repaired = gap_repair.repair(audio, words, decode)
+        self.assertEqual(2, len(calls))
+        self.assertGreater(sum(w.word == "bar" for w in repaired), 30)
+
+    def test_retry_starts_at_the_hole_not_a_second_before(self) -> None:
+        audio = _stem(20, [(2, 18)])
+        words = _every_half_second(2, 8) + _every_half_second(14, 18)
+        starts: list[float] = []
+
+        def decode(clip):
+            starts.append(len(clip) / SR)
+            return []
+
+        gap_repair.repair(audio, words, decode)
+        hole_start, hole_end = gap_repair.find_gaps(audio, gap_repair.collapse_repeats(words))[0]
+        expected = hole_end + gap_repair.CLIP_PAD - (hole_start - gap_repair.LEAD_IN)
+        self.assertAlmostEqual(expected, starts[0], places=1)
+
     def test_no_gaps_means_no_decoding(self) -> None:
         audio = _stem(10, [(1, 9)])
         words = _every_half_second(1, 9)
