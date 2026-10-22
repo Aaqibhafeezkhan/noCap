@@ -124,6 +124,7 @@ export interface FlowMap {
     time_signature: number;
     audio_path: string | null;
     analysis_mode?: string;
+    lyrics_edited?: boolean;
   };
   beats: FlowBeat[];
   words: FlowWord[];

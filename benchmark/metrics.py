@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import re
 import statistics
-from dataclasses import dataclass
+
+from nocap.text.token_align import Op, align  # noqa: F401  (re-exported for the benchmark)
 
 _TAG = re.compile(r"\[[^\]]*\]")  # section tags like [Chorus]
 _APOSTROPHES = str.maketrans({"’": "'", "‘": "'", "`": "'"})
@@ -18,40 +19,6 @@ def normalize(text: str) -> list[str]:
     text = _TAG.sub(" ", text).translate(_APOSTROPHES).lower()
     text = _NON_WORD.sub(" ", text.replace("-", " "))
     return [w.strip("'") for w in text.split() if w.strip("'")]
-
-
-@dataclass(frozen=True)
-class Op:
-    kind: str  # "ok", "sub", "del" (missing from hyp) or "ins" (extra in hyp)
-    ref: int | None
-    hyp: int | None
-
-
-def align(ref: list[str], hyp: list[str]) -> list[Op]:
-    """Levenshtein alignment of two token lists, returned in order."""
-    n, m = len(ref), len(hyp)
-    dist = [[0] * (m + 1) for _ in range(n + 1)]
-    for i in range(1, n + 1):
-        dist[i][0] = i
-    for j in range(1, m + 1):
-        dist[0][j] = j
-    for i in range(1, n + 1):
-        for j in range(1, m + 1):
-            cost = 0 if ref[i - 1] == hyp[j - 1] else 1
-            dist[i][j] = min(dist[i - 1][j] + 1, dist[i][j - 1] + 1, dist[i - 1][j - 1] + cost)
-    ops: list[Op] = []
-    i, j = n, m
-    while i > 0 or j > 0:
-        if i > 0 and j > 0 and dist[i][j] == dist[i - 1][j - 1] + (ref[i - 1] != hyp[j - 1]):
-            ops.append(Op("ok" if ref[i - 1] == hyp[j - 1] else "sub", i - 1, j - 1))
-            i, j = i - 1, j - 1
-        elif i > 0 and dist[i][j] == dist[i - 1][j] + 1:
-            ops.append(Op("del", i - 1, None))
-            i -= 1
-        else:
-            ops.append(Op("ins", None, j - 1))
-            j -= 1
-    return ops[::-1]
 
 
 def error_counts(ops: list[Op], ref_len: int) -> dict[str, float]:

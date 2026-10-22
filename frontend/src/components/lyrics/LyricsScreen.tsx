@@ -1,9 +1,11 @@
-import { Palette } from 'lucide-react';
+import { Palette, Pencil, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { colorToCss, type RhymeStyles } from '../../flow/colors';
 import { lyricSheet, type SheetRow } from '../../flow/lyricSheet';
 import { t } from '../../i18n';
 import type { FlowMap } from '../../types';
+import { LyricsEditor } from './LyricsEditor';
+import { LyricsExportMenu } from './LyricsExportMenu';
 
 const COLORS_KEY = 'nocap.lyrics.rhymeColors';
 
@@ -23,30 +25,81 @@ function saveColorsSetting(on: boolean) {
   }
 }
 
+type Props = {
+  flowmap: FlowMap;
+  styles: RhymeStyles;
+  onOpenBar: (barNo: number) => void;
+  /** Present for library tracks: saves edited bars and returns when the track is re-analysed. */
+  onSave?: (bars: Record<number, string>) => Promise<void>;
+  onRestore?: () => Promise<void>;
+};
+
 /** The whole track's lyrics as a readable sheet: one line per bar, by section. */
-export function LyricsScreen({ flowmap, styles, onOpenBar }: { flowmap: FlowMap; styles: RhymeStyles; onOpenBar: (barNo: number) => void }) {
+export function LyricsScreen({ flowmap, styles, onOpenBar, onSave, onRestore }: Props) {
   const sections = useMemo(() => lyricSheet(flowmap), [flowmap]);
   const [colors, setColors] = useState(readColorsSetting);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
   const toggleColors = () => {
     setColors(!colors);
     saveColorsSetting(!colors);
   };
   const hasWords = sections.some((section) => section.rows.some((row) => row.kind === 'line'));
 
+  async function run(action: () => Promise<void>, done: string) {
+    setBusy(true);
+    setStatus('');
+    try {
+      await action();
+      setEditing(false);
+      setStatus(done);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="lyrics-screen">
       <div className="lyrics-inner">
         <header className="lyrics-head">
           <div>
-            <p className="eyebrow">{t('lyrics.eyebrow')}</p>
+            <p className="eyebrow">{t(flowmap.metadata.lyrics_edited ? 'lyrics.eyebrowEdited' : 'lyrics.eyebrow')}</p>
             <h1>{flowmap.metadata.title}</h1>
           </div>
-          <button className={`btn btn-ghost lyrics-toggle ${colors ? 'is-on' : ''}`} aria-pressed={colors} onClick={toggleColors}>
-            <Palette size={14} /> {t('lyrics.rhymeColors')}
-          </button>
+          {!editing && (
+            <div className="lyrics-actions">
+              {onRestore && flowmap.metadata.lyrics_edited && (
+                <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void run(onRestore, t('lyrics.restored'))}>
+                  <RotateCcw size={14} /> {t('lyrics.restore')}
+                </button>
+              )}
+              {onSave && (
+                <button className="btn btn-ghost btn-sm" onClick={() => { setStatus(''); setEditing(true); }}>
+                  <Pencil size={14} /> {t('lyrics.edit.action')}
+                </button>
+              )}
+              {hasWords && <LyricsExportMenu flowmap={flowmap} sections={sections} onCopied={(ok) => setStatus(t(ok ? 'lyrics.copied' : 'lyrics.copyFailed'))} />}
+              <button className={`btn btn-ghost btn-sm lyrics-toggle ${colors ? 'is-on' : ''}`} aria-pressed={colors} onClick={toggleColors}>
+                <Palette size={14} /> {t('lyrics.rhymeColors')}
+              </button>
+            </div>
+          )}
         </header>
-        {!hasWords && <p className="lyrics-empty">{t('lyrics.empty')}</p>}
-        {hasWords && sections.map((section) => (
+        {status && <p className="lyrics-status" role="status">{status}</p>}
+        {editing && onSave && (
+          <LyricsEditor
+            flowmap={flowmap}
+            sections={sections}
+            saving={busy}
+            onSave={(bars) => void run(() => onSave(bars), t('lyrics.saved'))}
+            onCancel={() => setEditing(false)}
+          />
+        )}
+        {!editing && !hasWords && <p className="lyrics-empty">{t('lyrics.empty')}</p>}
+        {!editing && hasWords && sections.map((section) => (
           <section key={`${section.fromBar}-${section.toBar}`} className="lyrics-section" aria-label={section.label ?? undefined}>
             {section.label && (
               <h2 className="lyrics-section-title">
