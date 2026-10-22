@@ -6,6 +6,7 @@ import { LayersMenu } from './components/header/LayersMenu';
 import { TopBar, type AppMode } from './components/header/TopBar';
 import { LibraryScreen } from './components/library/LibraryScreen';
 import { PlayerBar } from './components/player/PlayerBar';
+import { LyricsScreen } from './components/lyrics/LyricsScreen';
 import { ReportScreen } from './components/report/ReportScreen';
 import { ShortcutsDialog } from './components/ShortcutsDialog';
 import { Toast, type ToastState } from './components/Toast';
@@ -92,7 +93,7 @@ export function App() {
   }
 
   const closeToast = useCallback(() => setToast(null), []);
-  const inTrack = !!flowmap && mode !== 'library';
+  const inTrack = !!flowmap && mode !== 'library' && mode !== 'lyrics'; // lyrics is a reading view, no player
   const loopRange = flowmap ? viewer.loopRange(flowmap) : null;
 
   useShortcuts({
@@ -105,7 +106,7 @@ export function App() {
     clear: mode === 'viewer' ? () => (viewer.activeRhyme ? viewer.setActiveRhyme(null) : viewer.clearSelection()) : undefined,
     zoom: mode === 'viewer' ? (direction) => (direction === 0 ? viewer.setZoom(DEFAULT_ZOOM) : viewer.zoomStep(direction)) : undefined,
     toggleInspector: mode === 'viewer' ? () => viewer.setInspectorOpen(!viewer.inspectorOpen) : undefined,
-    screen: (index) => setMode(index === 3 || !flowmap ? 'library' : index === 1 ? 'viewer' : 'report'),
+    screen: (index) => setMode(!flowmap || index === 4 ? 'library' : (['viewer', 'report', 'lyrics'] as const)[index - 1]),
     help: () => setShowShortcuts(true),
   });
 
@@ -142,6 +143,7 @@ export function App() {
         <FlowView flowmap={flowmap} styles={styles} markers={markers} viewer={viewer} audioTimeRef={audioTimeRef} isDemo={!!track?.isDemo} />
       )}
       {mode === 'report' && flowmap && <ReportScreen flowmap={flowmap} onOpenBar={(barNo) => { setMode('viewer'); viewer.focusBar(barNo); }} />}
+      {mode === 'lyrics' && flowmap && <LyricsScreen flowmap={flowmap} styles={styles} onOpenBar={(barNo) => { setMode('viewer'); viewer.focusBar(barNo); }} />}
 
       {inTrack && track && (
         <PlayerBar

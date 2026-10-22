@@ -28,7 +28,7 @@ const GROUPS: Array<{ title: 'shortcuts.playback' | 'shortcuts.navigation' | 'sh
       [['⌘', '−'], 'shortcuts.zoomOut'],
       [['⌘', '0'], 'shortcuts.zoomReset'],
       [['I'], 'shortcuts.inspector'],
-      [['1', '2', '3'], 'shortcuts.screens'],
+      [['1', '2', '3', '4'], 'shortcuts.screens'],
       [['?'], 'shortcuts.help'],
     ],
   },
