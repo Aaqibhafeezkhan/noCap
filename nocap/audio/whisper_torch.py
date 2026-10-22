@@ -84,6 +84,9 @@ def checkpoint_dir() -> Path:
 def model_name() -> str:
     """Return the model name to use for openai-whisper (prefers already-cached models)."""
     search_dir = checkpoint_dir()
+    override = os.environ.get("NOCAP_WHISPER_MODEL", "").strip()
+    if override:  # e.g. "large-v3-turbo" (used by the accuracy benchmark)
+        return override
     for name in ("medium.en", "medium"):
         if (search_dir / f"{name}.pt").exists():
             return name

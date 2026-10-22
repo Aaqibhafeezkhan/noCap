@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from nocap.i18n import msg
-from nocap.audio import gap_repair
+from nocap.audio import gap_repair, hallucination, vocal_segments
 from nocap.audio.loader import AudioData, resample_to_16k
 from nocap.text.parser import TimedLine
 
@@ -76,13 +76,17 @@ def transcribe(
 
     audio_arr = resample_to_16k(audio)
     options = dict(language=language, initial_prompt=initial_prompt, beam_size=beam_size, temperature=temperature)
-    result = _run_backends(audio_arr, whisper_progress_callback=whisper_progress_callback, **options)
+    if vocal_stem and vocal_segments.enabled():  # one decode per sung phrase group
+        result = vocal_segments.transcribe(audio_arr, lambda clip: _run_backends(clip, condition_on_previous_text=False, **options))
+    else:
+        result = _run_backends(audio_arr, whisper_progress_callback=whisper_progress_callback, **options)
     words = _filter_words(_extract_words(result))
     if vocal_stem:  # fill holes where the stem is sung but the first pass found nothing
         def decode_clip(clip):
             clip_result = _run_backends(clip, condition_on_previous_text=False, **options)
             return _filter_words(_extract_words(clip_result))
         words = gap_repair.repair(audio_arr, words, decode_clip)
+    words = hallucination.clean(audio_arr, words, vocal_stem)
     timed_lines = _segments_to_timed_lines(result)
 
     return TranscriptResult(
