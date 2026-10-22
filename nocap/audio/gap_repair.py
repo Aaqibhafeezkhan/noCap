@@ -19,7 +19,10 @@ HOP = 0.25            # seconds per activity frame
 ACTIVE_RATIO = 0.25   # frame RMS vs. the stem's overall RMS
 MIN_GAP = 3.0         # only repair holes at least this long
 JOIN_GAP = 1.0        # holes closer than this are repaired as one
-CLIP_PAD = 1.0        # context decoded around a hole
+LEAD_IN = 0.2         # audio decoded before a hole: more lets the phrase before it end the decode early
+CLIP_PAD = 1.0        # audio decoded after a hole
+MAX_PASSES = 6        # decode again from the last word found while a long part of the hole stays empty
+RETRY_STEP = 4.0      # a pass that finds nothing is retried this much later (a tag or noise may block it)
 MAX_WORDS_PER_SEC = 8.0
 STACKED_REPEAT = 0.1  # the same word again within this many seconds is a loop
 
@@ -72,16 +75,35 @@ def repair(audio: np.ndarray, words: list, decode: Decode) -> list:
     added: list = []
     duration = len(audio) / SAMPLE_RATE
     for gap_start, gap_end in find_gaps(audio, words):
-        clip_start = max(0.0, gap_start - CLIP_PAD)
-        clip_end = min(duration, gap_end + CLIP_PAD)
-        clip = audio[int(clip_start * SAMPLE_RATE): int(clip_end * SAMPLE_RATE)]
-        found = [_shifted(w, clip_start) for w in collapse_repeats(decode(clip))]
-        found = [w for w in found if gap_start - 0.3 <= w.start < gap_end]
-        if len(found) <= MAX_WORDS_PER_SEC * (gap_end - gap_start):  # else: hallucination
-            added.extend(found)
+        added.extend(_fill(audio, gap_start, gap_end, min(duration, gap_end + CLIP_PAD), decode))
     if not added:
         return words
     return collapse_repeats(sorted(words + added, key=lambda w: w.start))
+
+
+def _fill(audio: np.ndarray, gap_start: float, gap_end: float, clip_end: float, decode: Decode) -> list:
+    """Decode a hole; Whisper may stop after the first phrase, so continue from the
+    last word found while at least MIN_GAP of the hole is still empty."""
+    found_all: list = []
+    start = gap_start
+    for _ in range(MAX_PASSES):
+        clip_start = max(0.0, start - LEAD_IN)
+        clip = audio[int(clip_start * SAMPLE_RATE): int(clip_end * SAMPLE_RATE)]
+        found = [_shifted(w, clip_start) for w in collapse_repeats(decode(clip))]
+        found = [w for w in found if start - 0.3 <= w.start < gap_end]
+        if len(found) > MAX_WORDS_PER_SEC * (gap_end - start):  # a decoder loop, not lyrics
+            break
+        found_all.extend(found)
+        if not found:
+            start += RETRY_STEP
+            if gap_end - start < MIN_GAP:
+                break
+            continue
+        reached = max(w.end for w in found)
+        if reached <= start + HOP or gap_end - reached < MIN_GAP:  # no progress, or nearly full
+            break
+        start = reached
+    return found_all
 
 
 def _shifted(word, offset: float):

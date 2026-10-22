@@ -14,11 +14,16 @@ def run(
     language: str | None,
     initial_prompt: str | None,
     beam_size: int,
-    temperature: float,
+    temperature: float | tuple[float, ...],
     condition_on_previous_text: bool = True,
+    no_speech_threshold: float | None = 0.6,
+    compression_ratio_threshold: float | None = 2.4,
 ) -> dict:
     """Transcribe using openai-whisper (PyTorch) with DTW word timestamps."""
+    import torch
     import whisper  # raises ImportError if not installed → caller falls back
+
+    torch.manual_seed(0)  # temperature fallback samples: keep runs repeatable
 
     bundled = bundled_whisper_dir()
     model = whisper.load_model(
@@ -34,6 +39,8 @@ def run(
         beam_size=beam_size,
         temperature=temperature,
         condition_on_previous_text=condition_on_previous_text,
+        no_speech_threshold=no_speech_threshold,
+        compression_ratio_threshold=compression_ratio_threshold,
         verbose=False,
     )
     return normalize_result(raw)
@@ -41,8 +48,12 @@ def run(
 
 def normalize_result(raw: dict) -> dict:
     """Reduce an openai-whisper style result to text, language and timed words."""
+    from nocap.audio.stem_decoding import gave_up
+
     segments = []
     for seg in raw.get("segments", []):
+        if gave_up(seg):
+            continue
         words = [
             {
                 "word": w.get("word", "").strip(),
@@ -84,6 +95,9 @@ def checkpoint_dir() -> Path:
 def model_name() -> str:
     """Return the model name to use for openai-whisper (prefers already-cached models)."""
     search_dir = checkpoint_dir()
+    override = os.environ.get("NOCAP_WHISPER_MODEL", "").strip()
+    if override:  # e.g. "large-v3-turbo" (used by the accuracy benchmark)
+        return override
     for name in ("medium.en", "medium"):
         if (search_dir / f"{name}.pt").exists():
             return name

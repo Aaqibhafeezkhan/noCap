@@ -27,13 +27,16 @@ def run(
     language: str | None,
     initial_prompt: str | None,
     beam_size: int,
-    temperature: float,
+    temperature: float | tuple[float, ...],
     condition_on_previous_text: bool = True,
+    no_speech_threshold: float | None = 0.6,
+    compression_ratio_threshold: float | None = 2.4,
 ) -> dict:
     import mlx.core as mx
     import mlx_whisper
     from mlx_whisper.transcribe import ModelHolder
 
+    from nocap.audio import stem_decoding
     from nocap.audio.mlx_beam import patched_decoding
 
     name = whisper_torch.model_name()
@@ -42,6 +45,7 @@ def run(
     # hand it our converted model instead and release it afterwards.
     ModelHolder.model, ModelHolder.model_path = model, name
     use_beam = beam_size > 1
+    mx.random.seed(stem_decoding.SEED)  # temperature fallback samples: keep runs repeatable
     try:
         with patched_decoding():
             raw = mlx_whisper.transcribe(
@@ -53,6 +57,8 @@ def run(
                 beam_size=beam_size if use_beam else None,
                 temperature=temperature,
                 condition_on_previous_text=condition_on_previous_text,
+                no_speech_threshold=no_speech_threshold,
+                compression_ratio_threshold=compression_ratio_threshold,
                 fp16=True,
                 verbose=None,
             )
