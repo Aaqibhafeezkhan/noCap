@@ -12,7 +12,7 @@ export function useDialog(onClose: () => void) {
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const root = ref.current;
-    root?.querySelector<HTMLElement>('[data-autofocus]')?.focus() ?? root?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    (root?.querySelector<HTMLElement>('[data-autofocus]') ?? root?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();

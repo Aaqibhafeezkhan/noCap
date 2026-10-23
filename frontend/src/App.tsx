@@ -9,6 +9,7 @@ import { PlayerBar } from './components/player/PlayerBar';
 import { restoreLyrics, saveLyrics } from './api/lyrics';
 import { LyricsScreen } from './components/lyrics/LyricsScreen';
 import { ReportScreen } from './components/report/ReportScreen';
+import { OnboardingDialog } from './components/onboarding/OnboardingDialog';
 import { ShortcutsDialog } from './components/ShortcutsDialog';
 import { Toast, type ToastState } from './components/Toast';
 import { buildRhymeStyles } from './flow/colors';
@@ -17,6 +18,7 @@ import { computeMarkers } from './flow/markers';
 import { useAnalysis } from './hooks/useAnalysis';
 import type { PlayerApi } from './hooks/useAudioPlayer';
 import { useLibrary } from './hooks/useLibrary';
+import { useOnboarding } from './hooks/useOnboarding';
 import { useShortcuts } from './hooks/useShortcuts';
 import { useViewerState } from './hooks/useViewerState';
 import { t } from './i18n';
@@ -43,6 +45,7 @@ export function App() {
   const playerApi = useRef<PlayerApi | null>(null);
   const library = useLibrary();
   const viewer = useViewerState();
+  const onboarding = useOnboarding();
   const flowmap = track?.flowmap ?? null;
   const styles = useMemo(() => (flowmap ? buildRhymeStyles(flowmap) : new Map()), [flowmap]);
   const markers = useMemo(() => (flowmap ? computeMarkers(vocalBars(flowmap)) : new Map()), [flowmap]);
@@ -59,7 +62,7 @@ export function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (mode === 'library') void library.refreshLibrary();
+    if (mode === 'library') void library.refreshLibrary().then(onboarding.decide);
   }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const editableId = track && !track.isDemo ? track.id : null;
@@ -186,7 +189,8 @@ export function App() {
       {library.deleteCandidate && (
         <DeleteTrackModal track={library.deleteCandidate} onCancel={() => library.setDeleteCandidate(null)} onConfirm={() => void confirmDelete()} />
       )}
-      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} onShowIntro={() => { setShowShortcuts(false); onboarding.show(); }} />}
+      {onboarding.open && <OnboardingDialog onClose={onboarding.close} onDemo={openDemo} onAnalyze={(file) => { setMode('library'); void analysis.start(file); }} />}
       {toast && <Toast toast={toast} onClose={closeToast} />}
     </div>
   );
