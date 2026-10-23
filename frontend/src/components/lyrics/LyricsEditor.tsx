@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type KeyboardEvent } from 'react';
 import { barWords } from '../../flow/lyrics';
 import type { SheetSection } from '../../flow/lyricSheet';
 import { t } from '../../i18n';
@@ -23,14 +23,30 @@ export function LyricsEditor({ flowmap, sections, saving, onSave, onCancel }: Pr
   const changed = [...draft].filter(([bar, text]) => normalize(text) !== normalize(original.get(bar) ?? ''));
 
   function save() {
+    if (changed.length === 0 || saving) return;
     onSave(Object.fromEntries(changed.map(([bar, text]) => [bar, normalize(text)])));
   }
 
+  function cancel() {
+    if (changed.length > 0 && !window.confirm(t('lyrics.edit.discard', { count: changed.length }))) return;
+    onCancel();
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancel();
+    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      save();
+    }
+  }
+
   return (
-    <form className="lyrics-editor" onSubmit={(event) => { event.preventDefault(); save(); }}>
+    <form className="lyrics-editor" onSubmit={(event) => { event.preventDefault(); save(); }} onKeyDown={onKeyDown}>
       <div className="lyrics-editor-bar">
         <span className="lyrics-editor-hint">{t('lyrics.edit.hint')}</span>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel} disabled={saving}>{t('lyrics.edit.cancel')}</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={cancel} disabled={saving}>{t('lyrics.edit.cancel')}</button>
         <button type="submit" className="btn btn-primary btn-sm" disabled={saving || changed.length === 0}>
           {saving ? t('lyrics.edit.saving') : t('lyrics.edit.save', { count: changed.length })}
         </button>
@@ -39,16 +55,16 @@ export function LyricsEditor({ flowmap, sections, saving, onSave, onCancel }: Pr
         <section key={`${section.fromBar}-${section.toBar}`} className="lyrics-section">
           {section.label && <h2 className="lyrics-section-title">{section.label}</h2>}
           <ol className="lyrics-lines">
-            {flowmap.bars.filter((bar) => bar.bar_no >= section.fromBar && bar.bar_no <= section.toBar).map((bar) => (
-              <li key={bar.bar_no} className="lyrics-row">
-                <label className="lyrics-bar" htmlFor={`lyric-${bar.bar_no}`}>{bar.bar_no}</label>
+            {section.bars.map((barNo) => (
+              <li key={barNo} className="lyrics-row">
+                <label className="lyrics-bar" htmlFor={`lyric-${barNo}`}>{barNo}</label>
                 <input
-                  id={`lyric-${bar.bar_no}`}
-                  className={`lyrics-input ${normalize(draft.get(bar.bar_no) ?? '') !== normalize(original.get(bar.bar_no) ?? '') ? 'is-changed' : ''}`}
-                  value={draft.get(bar.bar_no) ?? ''}
+                  id={`lyric-${barNo}`}
+                  className={`lyrics-input ${normalize(draft.get(barNo) ?? '') !== normalize(original.get(barNo) ?? '') ? 'is-changed' : ''}`}
+                  value={draft.get(barNo) ?? ''}
                   placeholder={t('lyrics.instrumental')}
                   disabled={saving}
-                  onChange={(event) => setDraft(new Map(draft).set(bar.bar_no, event.target.value))}
+                  onChange={(event) => setDraft(new Map(draft).set(barNo, event.target.value))}
                 />
               </li>
             ))}

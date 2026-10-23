@@ -1,5 +1,5 @@
 import type { Graphics } from 'pixi.js';
-import { FLOW_DIMS, rowTop } from '../layout';
+import { FLOW_DIMS, rowHeight, rowTop } from '../layout';
 import type { MarkerKind } from '../markers';
 import { CANVAS } from '../theme';
 import { isSelected } from './rows';
@@ -34,25 +34,28 @@ export function drawLabels(graphics: Graphics, pool: TextPool, state: RenderStat
   const bottom = rowTop(layout, range.last + 1);
   graphics.rect(0, top, FLOW_DIMS.labelW, bottom - top).fill(CANVAS.labelBg);
   graphics.moveTo(FLOW_DIMS.labelW - 0.5, top).lineTo(FLOW_DIMS.labelW - 0.5, bottom).stroke({ color: CANVAS.beatLine, width: 1 });
-  const compact = layout.barH < 26;
   for (let index = range.first; index <= range.last; index += 1) {
     const bar = flowmap.bars[index];
     const rowY = rowTop(layout, index);
-    const middle = rowY + layout.barH / 2;
+    const height = rowHeight(layout, index);
+    const middle = rowY + height / 2;
+    const compact = height < 26;
     const selected = isSelected(state, bar.bar_no);
-    if (selected) graphics.rect(0, rowY, 3, layout.barH).fill({ color: CANVAS.accent, alpha: state.loop ? 1 : 0.8 });
-    const showNumber = !compact || bar.bar_no % 4 === 1 || selected;
+    if (selected) graphics.rect(0, rowY, 3, height).fill({ color: CANVAS.accent, alpha: state.loop ? 1 : 0.8 });
+    // Thin rows (bars without words, or zoomed out) number only every 4th bar.
+    const showNumber = selected || (bar.empty ? height >= 14 || bar.bar_no % 4 === 1 : !compact || bar.bar_no % 4 === 1);
     if (showNumber) {
-      pool.place(selected ? 'labelStrong' : 'label', String(bar.bar_no), FLOW_DIMS.labelW - 8, middle, selected ? CANVAS.labelStrong : CANVAS.label, {
+      const color = selected ? CANVAS.labelStrong : bar.empty ? CANVAS.otherRhyme : CANVAS.label;
+      pool.place(selected ? 'labelStrong' : 'label', String(bar.bar_no), FLOW_DIMS.labelW - 8, middle, color, {
         anchorX: 1,
         anchorY: 0.5,
         size: compact ? 9 : 11,
       });
     }
-    if (state.layers.markers) {
+    if (state.layers.markers && !bar.empty) {
       (state.markers.get(bar.bar_no) || []).forEach((marker, slot) => drawMarker(graphics, marker.kind, MARKER_X0 + slot * MARKER_STEP, middle));
     }
-    if (hover.rowIndex === index && !compact) drawPlayButton(graphics, middle, hover.onPlayButton);
+    if (hover.rowIndex === index && !compact && !bar.empty) drawPlayButton(graphics, middle, hover.onPlayButton);
   }
 }
 

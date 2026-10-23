@@ -9,6 +9,7 @@ import type { FlowBar, FlowMap } from '../../types';
 import { BarLyrics } from './BarLyrics';
 import { MarkerNotes } from './MarkerNotes';
 import { Meter } from './Meter';
+import { vocalBars } from '../../flow/emptyBars';
 
 export function BarTab({ flowmap, styles, markers, selection, onFocusBar, onPlayBar }: {
   flowmap: FlowMap;
@@ -18,18 +19,17 @@ export function BarTab({ flowmap, styles, markers, selection, onFocusBar, onPlay
   onFocusBar: (barNo: number) => void;
   onPlayBar: (barNo: number) => void;
 }) {
-  const averages = useMemo(() => trackAverages(flowmap.bars), [flowmap]);
-  const maxima = useMemo(() => trackMax(flowmap.bars), [flowmap]);
+  const averages = useMemo(() => trackAverages(vocalBars(flowmap)), [flowmap]);
+  const maxima = useMemo(() => trackMax(vocalBars(flowmap)), [flowmap]);
   const bars = useMemo(
-    () => (selection ? flowmap.bars.filter((bar) => bar.bar_no >= selection.start && bar.bar_no <= selection.end) : []),
+    () => (selection ? vocalBars(flowmap).filter((bar) => bar.bar_no >= selection.start && bar.bar_no <= selection.end) : []),
     [flowmap, selection],
   );
   const single = bars.length === 1 ? bars[0] : null;
   const similar = useMemo(() => (single ? similarBars(flowmap, single.bar_no) : []), [flowmap, single]);
 
-  if (!selection || bars.length === 0) {
-    return <p className="insp-empty">{t('inspector.bar.empty')}</p>;
-  }
+  if (!selection) return <p className="insp-empty">{t('inspector.bar.empty')}</p>;
+  if (bars.length === 0) return <p className="insp-empty">{t('inspector.bar.instrumental', { bar: selection.start })}</p>;
   const values = aggregate(bars);
   const section = flowmap.sections.find((item) => bars[0].bar_no >= item.start_bar && bars[0].bar_no <= item.end_bar);
 

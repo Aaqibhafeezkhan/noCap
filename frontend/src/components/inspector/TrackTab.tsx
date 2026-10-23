@@ -1,4 +1,4 @@
-import { t } from '../../i18n';
+import { barSpan, t } from '../../i18n';
 import type { FlowMap } from '../../types';
 import { Meter } from './Meter';
 
@@ -37,7 +37,7 @@ export function TrackTab({ flowmap, onFocusBar }: { flowmap: FlowMap; onFocusBar
               <li key={section.id}>
                 <button className="section-item" onClick={() => onFocusBar(section.start_bar)}>
                   <span className="section-name">{t('sections.short', { index: index + 1 })}</span>
-                  <span className="section-range">{t('sections.bars', { start: section.start_bar, end: section.end_bar })}</span>
+                  <span className="section-range">{barSpan(section.start_bar, section.end_bar)}</span>
                   <span className="section-density">{section.avg_density.toFixed(2)}</span>
                 </button>
               </li>

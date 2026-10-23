@@ -1,5 +1,5 @@
 import { Application, Container, Graphics } from 'pixi.js';
-import { FLOW_DIMS, barIndexMap, type SyllableRect } from '../layout';
+import { FLOW_DIMS, barIndexMap, rowAtY, type SyllableRect } from '../layout';
 import { CANVAS, loadCanvasFonts } from '../theme';
 import { drawBlocks } from './blocks';
 import { drawHeader, drawLabels } from './chrome';
@@ -118,9 +118,9 @@ export class FlowRenderer {
   private visibleRange(): RowRange | null {
     const state = this.state;
     if (!state || state.flowmap.bars.length === 0) return null;
-    const { barH } = state.layout;
-    const first = Math.max(0, Math.floor((this.scroll.y - FLOW_DIMS.headerH) / barH));
-    const last = Math.min(state.flowmap.bars.length - 1, Math.ceil((this.scroll.y + this.view.height) / barH));
+    const count = state.flowmap.bars.length;
+    const first = rowAtY(state.layout, count, Math.max(FLOW_DIMS.headerH, this.scroll.y)) ?? 0;
+    const last = rowAtY(state.layout, count, this.scroll.y + this.view.height) ?? count - 1;
     return { first, last };
   }
 

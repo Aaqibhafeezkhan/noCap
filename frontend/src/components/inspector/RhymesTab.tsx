@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { colorToCss, type RhymeStyles } from '../../flow/colors';
 import { phoneticToIpa } from '../../flow/phonetics';
 import { cleanWord } from '../../flow/syllableText';
-import { t } from '../../i18n';
+import { barSpan, t } from '../../i18n';
 import type { FlowMap } from '../../types';
 
 interface GroupSummary {
@@ -51,7 +51,7 @@ export function RhymesTab({ flowmap, styles, activeRhyme, onActiveRhymeChange, o
                     <span className="rhyme-words">{group.words.join(' · ')}</span>
                   </span>
                   <span className="rhyme-meta">
-                    {t('inspector.rhymes.meta', { count: group.syllables, start: group.firstBar, end: group.lastBar })}
+                    {t('inspector.rhymes.meta', { count: group.syllables, bars: barSpan(group.firstBar, group.lastBar) })}
                   </span>
                   <Spread values={group.spread} color={group.color} />
                 </span>

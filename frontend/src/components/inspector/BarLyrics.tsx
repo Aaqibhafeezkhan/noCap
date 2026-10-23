@@ -17,7 +17,8 @@ export function BarLyrics({ flowmap, styles, barNumbers }: { flowmap: FlowMap; s
             <span className="lyric-text">
               {words.length === 0 && <em className="lyric-empty">{t('inspector.bar.noWords')}</em>}
               {words.map((word) => {
-                const style = word.rhymeGroup ? styles.get(word.rhymeGroup) : undefined;
+                const found = word.rhymeGroup ? styles.get(word.rhymeGroup) : undefined;
+                const style = found?.featured ? found : undefined; // smaller groups stay plain text
                 return (
                   <span
                     key={word.wordId}

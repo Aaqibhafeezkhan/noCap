@@ -30,6 +30,9 @@ export interface FlowLayout {
   zoom: number;
   showText: boolean;
   gridW: number;
+  /** Top of every row plus the bottom of the last one (rows.length + 1 entries). Bars
+   *  without words get a thin row, so rows are not all ``barH`` tall. */
+  rowTops: number[];
 }
 
 export interface SyllableRect {
@@ -55,25 +58,47 @@ export function computeLayout(flowmap: FlowMap, viewportW: number, zoom: number)
     ? Math.min(FLOW_DIMS.maxBarH, Math.round(FLOW_DIMS.baseBarH + (zoom - 1) * 8))
     : Math.max(FLOW_DIMS.minBarH, Math.round(FLOW_DIMS.baseBarH * zoom));
   const gridW = signature * beatW;
+  const rowTops = [FLOW_DIMS.headerH];
+  for (const bar of flowmap.bars) rowTops.push(rowTops[rowTops.length - 1] + (bar.empty ? emptyRowH(barH) : barH));
   return {
     width: FLOW_DIMS.labelW + gridW + FLOW_DIMS.densW,
-    height: FLOW_DIMS.headerH + flowmap.bars.length * barH + 8,
+    height: rowTops[rowTops.length - 1] + 8,
     beatW,
     barH,
     signature,
     zoom,
     showText: barH >= FLOW_DIMS.textMinBarH,
     gridW,
+    rowTops,
   };
 }
 
-export function rowTop(layout: FlowLayout, rowIndex: number): number {
-  return FLOW_DIMS.headerH + rowIndex * layout.barH;
+/** Height of a row for a bar without words. */
+export function emptyRowH(barH: number): number {
+  return Math.max(8, Math.round(barH * 0.35));
 }
 
+export function rowTop(layout: FlowLayout, rowIndex: number): number {
+  const { rowTops } = layout;
+  return rowTops[Math.max(0, Math.min(rowIndex, rowTops.length - 1))];
+}
+
+export function rowHeight(layout: FlowLayout, rowIndex: number): number {
+  return rowTop(layout, rowIndex + 1) - rowTop(layout, rowIndex);
+}
+
+/** Row under a content y (binary search over the row tops). */
 export function rowAtY(layout: FlowLayout, rowCount: number, y: number): number | null {
-  const index = Math.floor((y - FLOW_DIMS.headerH) / layout.barH);
-  return index >= 0 && index < rowCount ? index : null;
+  const { rowTops } = layout;
+  if (y < rowTops[0] || y >= rowTops[Math.min(rowCount, rowTops.length - 1)]) return null;
+  let low = 0;
+  let high = Math.min(rowCount, rowTops.length - 1) - 1;
+  while (low < high) {
+    const mid = (low + high + 1) >> 1;
+    if (rowTops[mid] <= y) low = mid;
+    else high = mid - 1;
+  }
+  return low;
 }
 
 /** Syllable blocks per bar row. Width follows the syllable's sung duration and is

@@ -21,6 +21,8 @@ export const CANVAS = {
   bg: 0x0b0b0d,
   rowA: 0x0f0f12,
   rowB: 0x121216,
+  /** Bars without words (canvas only): darker than any word row. */
+  emptyRow: 0x0c0c0e,
   rowSelected: 0x1d1a1a,
   header: 0x0d0d10,
   labelBg: 0x0d0d10,

@@ -121,8 +121,8 @@ export function FlowStage(props: FlowStageProps) {
     const bar = hit.rowIndex !== null ? flowmap.bars[hit.rowIndex] : null;
     const content = hit.rect ? { kind: 'syllable' as const, rect: hit.rect }
       : hit.marker ? { kind: 'marker' as const, marker: hit.marker }
-        : hit.onDensity && bar ? { kind: 'bar' as const, bar } : null;
-    setTooltip(content ? { x: event.clientX + 14, y: event.clientY + 14, content } : null);
+        : hit.onDensity && bar && !bar.empty ? { kind: 'bar' as const, bar } : null;
+    setTooltip(content ? { x: event.clientX, y: event.clientY, content } : null);
     event.currentTarget.classList.toggle('is-pointing', !!(hit.rect || hit.onPlayButton));
   }
 

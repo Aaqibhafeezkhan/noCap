@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { BAR_METRICS, formatBarMetric } from '../../flow/barStats';
 import { t } from '../../i18n';
 import type { FlowMap } from '../../types';
+import { vocalBars } from '../../flow/emptyBars';
 
 /** Raw per-bar numbers, collapsed by default. */
 export function BarDataTable({ flowmap, onOpenBar }: { flowmap: FlowMap; onOpenBar: (barNo: number) => void }) {
@@ -12,7 +13,7 @@ export function BarDataTable({ flowmap, onOpenBar }: { flowmap: FlowMap; onOpenB
       <button className="disclosure" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <ChevronRight size={15} className="disclosure-icon" />
         <span className="panel-title">{t('report.barData')}</span>
-        <small>{t('report.barDataCount', { count: flowmap.bars.length })}</small>
+        <small>{t('report.barDataCount', { count: vocalBars(flowmap).length })}</small>
       </button>
       {open && (
         <div className="table-scroll table-scroll-tall">
@@ -25,7 +26,7 @@ export function BarDataTable({ flowmap, onOpenBar }: { flowmap: FlowMap; onOpenB
               </tr>
             </thead>
             <tbody>
-              {flowmap.bars.map((bar) => (
+              {vocalBars(flowmap).map((bar) => (
                 <tr key={bar.bar_no} className="is-clickable" tabIndex={0} onClick={() => onOpenBar(bar.bar_no)} onKeyDown={(event) => event.key === 'Enter' && onOpenBar(bar.bar_no)}>
                   <th scope="row">{bar.bar_no}</th>
                   {BAR_METRICS.map((key) => <td key={key} className="num">{formatBarMetric(key, bar[key])}</td>)}

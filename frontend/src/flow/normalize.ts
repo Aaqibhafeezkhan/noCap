@@ -1,4 +1,5 @@
 import type { FlowMap, FlowSyllable } from '../types';
+import { withEmptyBars } from './emptyBars';
 
 type LegacyFlowMap = {
   schema_version?: number;
@@ -81,7 +82,7 @@ export function normalizeFlowMap(input: LegacyFlowMap): FlowMap {
     beats,
     words: input.words || [],
     syllables,
-    bars,
+    bars: withEmptyBars(bars, beats),
     rhyme_groups: input.rhyme_groups || [],
     rhyme_chains: input.rhyme_chains || [],
     sections: (input.sections || []).map((section, index) => ({

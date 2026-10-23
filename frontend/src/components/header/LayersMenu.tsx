@@ -17,8 +17,9 @@ export function LayersMenu({ layers, onChange }: { layers: LayerState; onChange:
         onClick={popover.toggle}
         aria-haspopup="true"
         aria-expanded={popover.open}
+        title={t('layers.action')}
       >
-        <Layers size={14} /> {t('layers.action')} <ChevronDown size={13} className="menu-chevron" />
+        <Layers size={14} /> <span className="btn-label">{t('layers.action')}</span> <ChevronDown size={13} className="menu-chevron" />
       </button>
       {popover.open && (
         <div className="menu-popover layers-popover" role="group" aria-label={t('layers.title')}>

@@ -1,7 +1,7 @@
 import type { Graphics } from 'pixi.js';
 import type { FlowMap, FlowSyllable } from '../../types';
 import { rhymeColor } from '../colors';
-import { FLOW_DIMS, rowTop, type SyllableRect } from '../layout';
+import { FLOW_DIMS, rowHeight, rowTop, type SyllableRect } from '../layout';
 import { CANVAS } from '../theme';
 import type { HoverState, RenderState, RowRange } from './types';
 
@@ -9,7 +9,7 @@ import type { HoverState, RenderState, RowRange } from './types';
 export function drawHover(graphics: Graphics, state: RenderState, range: RowRange, hover: HoverState) {
   graphics.clear();
   if (hover.rowIndex !== null && !hover.rect) {
-    graphics.rect(FLOW_DIMS.labelW, rowTop(state.layout, hover.rowIndex), state.layout.gridW, state.layout.barH).fill({ color: 0xffffff, alpha: 0.025 });
+    graphics.rect(FLOW_DIMS.labelW, rowTop(state.layout, hover.rowIndex), state.layout.gridW, rowHeight(state.layout, hover.rowIndex)).fill({ color: 0xffffff, alpha: 0.025 });
   }
   const rect = hover.rect;
   if (!rect) return;
@@ -69,11 +69,12 @@ export function drawPlayhead(graphics: Graphics, state: RenderState, rowOf: Map<
   const rowIndex = rowOf.get(beat.bar_no);
   if (rowIndex === undefined) return null;
   const top = rowTop(layout, rowIndex);
+  const height = rowHeight(layout, rowIndex);
   const nextTime = flowmap.beats[beatIndex + 1]?.time ?? beat.time + 60 / (flowmap.metadata.bpm || 90);
   const frac = nextTime > beat.time ? Math.min(1, Math.max(0, (time - beat.time) / (nextTime - beat.time))) : 0;
   const x = FLOW_DIMS.labelW + (beat.beat_no - 1 + frac) * layout.beatW;
-  graphics.rect(FLOW_DIMS.labelW, top, layout.gridW, layout.barH).fill({ color: CANVAS.accent, alpha: 0.07 });
-  graphics.moveTo(x, top).lineTo(x, top + layout.barH).stroke({ color: 0xffffff, width: 1.5, alpha: 0.85 });
+  graphics.rect(FLOW_DIMS.labelW, top, layout.gridW, height).fill({ color: CANVAS.accent, alpha: 0.07 });
+  graphics.moveTo(x, top).lineTo(x, top + height).stroke({ color: 0xffffff, width: 1.5, alpha: 0.85 });
   const active = findActiveRect(timeIndex, time);
   if (active) {
     const color = rhymeColor(state.styles, active.syllable.rhyme_group);

@@ -2,7 +2,7 @@ import { Palette, Pencil, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { colorToCss, type RhymeStyles } from '../../flow/colors';
 import { lyricSheet, type SheetRow } from '../../flow/lyricSheet';
-import { t } from '../../i18n';
+import { barSpan, t } from '../../i18n';
 import type { FlowMap } from '../../types';
 import { LyricsEditor } from './LyricsEditor';
 import { LyricsExportMenu } from './LyricsExportMenu';
@@ -103,7 +103,7 @@ export function LyricsScreen({ flowmap, styles, onOpenBar, onSave, onRestore }: 
           <section key={`${section.fromBar}-${section.toBar}`} className="lyrics-section" aria-label={section.label ?? undefined}>
             {section.label && (
               <h2 className="lyrics-section-title">
-                {section.label} <span>{t('lyrics.barRange', { from: section.fromBar, to: section.toBar })}</span>
+                {section.label} <span>{barSpan(section.fromBar, section.toBar)}</span>
               </h2>
             )}
             <ol className="lyrics-lines">
@@ -130,7 +130,8 @@ function Row({ row, styles, colors, onOpenBar }: { row: SheetRow; styles: RhymeS
       <button className="lyrics-bar" onClick={() => onOpenBar(row.barNo)} title={t('lyrics.openBar', { bar: row.barNo })}>{row.barNo}</button>
       <p className="lyrics-text">
         {row.words.map((word) => {
-          const style = colors && word.rhymeGroup ? styles.get(word.rhymeGroup) : undefined;
+          const found = colors && word.rhymeGroup ? styles.get(word.rhymeGroup) : undefined;
+          const style = found?.featured ? found : undefined; // smaller groups stay plain text
           return (
             <span
               key={word.wordId}

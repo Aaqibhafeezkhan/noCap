@@ -1,4 +1,4 @@
-import { t } from '../../i18n';
+import { barSpan, t } from '../../i18n';
 import type { FlowSection } from '../../types';
 
 /** One row per detected section, with energy and timbre folded in. Rows open the flow view. */
@@ -25,7 +25,7 @@ export function SectionTable({ sections, onOpenBar }: { sections: FlowSection[];
             {sections.map((section, index) => (
               <tr key={section.id} className="is-clickable" tabIndex={0} onClick={() => onOpenBar(section.start_bar)} onKeyDown={(event) => event.key === 'Enter' && onOpenBar(section.start_bar)}>
                 <th scope="row">{t('sections.short', { index: index + 1 })}</th>
-                <td>{t('sections.bars', { start: section.start_bar, end: section.end_bar })}</td>
+                <td>{barSpan(section.start_bar, section.end_bar)}</td>
                 <td className="num">{section.avg_density.toFixed(2)}</td>
                 <td className="num">{pct(section.syncopation_score)}</td>
                 <td className="num">{section.local_bpm.toFixed(1)}</td>

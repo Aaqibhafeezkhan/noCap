@@ -22,6 +22,7 @@ import { useViewerState } from './hooks/useViewerState';
 import { t } from './i18n';
 import { sampleFlowmap } from './sampleFlowmap';
 import type { FlowMap } from './types';
+import { vocalBars } from './flow/emptyBars';
 
 interface OpenTrack {
   flowmap: FlowMap;
@@ -44,7 +45,7 @@ export function App() {
   const viewer = useViewerState();
   const flowmap = track?.flowmap ?? null;
   const styles = useMemo(() => (flowmap ? buildRhymeStyles(flowmap) : new Map()), [flowmap]);
-  const markers = useMemo(() => (flowmap ? computeMarkers(flowmap.bars) : new Map()), [flowmap]);
+  const markers = useMemo(() => (flowmap ? computeMarkers(vocalBars(flowmap)) : new Map()), [flowmap]);
 
   const analysis = useAnalysis((finished) => {
     void library.refreshLibrary();

@@ -1,4 +1,4 @@
-import { FLOW_DIMS, rowAtY, rowTop, type SyllableRect } from '../../flow/layout';
+import { FLOW_DIMS, rowAtY, rowHeight, rowTop, type SyllableRect } from '../../flow/layout';
 import type { MarkerKind } from '../../flow/markers';
 import { hitPlayButton, markerAt } from '../../flow/pixi/chrome';
 import type { RenderState } from '../../flow/pixi/types';
@@ -20,12 +20,13 @@ export function hitAt(state: RenderState, viewX: number, viewY: number, scrollX:
   const contentY = viewY + scrollY;
   const rowIndex = rowAtY(layout, state.flowmap.bars.length, contentY);
   if (rowIndex === null) return EMPTY;
-  const middle = rowTop(layout, rowIndex) + layout.barH / 2;
+  const height = rowHeight(layout, rowIndex);
+  const middle = rowTop(layout, rowIndex) + height / 2;
   if (viewX < FLOW_DIMS.labelW) {
     return {
       ...EMPTY,
       rowIndex,
-      onPlayButton: layout.barH >= 26 && hitPlayButton(viewX, contentY, middle),
+      onPlayButton: height >= 26 && !state.flowmap.bars[rowIndex].empty && hitPlayButton(viewX, contentY, middle),
       marker: markerAt(state, rowIndex, viewX),
     };
   }

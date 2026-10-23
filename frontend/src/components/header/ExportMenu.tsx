@@ -20,8 +20,9 @@ export function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
         onClick={popover.toggle}
         aria-haspopup="menu"
         aria-expanded={popover.open}
+        title={t('export.action')}
       >
-        <Download size={14} /> {t('export.action')} <ChevronDown size={13} className="menu-chevron" />
+        <Download size={14} /> <span className="btn-label">{t('export.action')}</span> <ChevronDown size={13} className="menu-chevron" />
       </button>
       {popover.open && (
         <div className="menu-popover menu-popover-sm" role="menu">

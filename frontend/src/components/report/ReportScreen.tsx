@@ -6,12 +6,13 @@ import { BarCompare } from './BarCompare';
 import { BarDataTable } from './BarDataTable';
 import { SectionTable } from './SectionTable';
 import { TimelineChart } from './TimelineChart';
+import { vocalBars } from '../../flow/emptyBars';
 
 export function ReportScreen({ flowmap, onOpenBar }: { flowmap: FlowMap; onOpenBar: (barNo: number) => void }) {
   const { summary } = flowmap;
-  const averages = useMemo(() => trackAverages(flowmap.bars), [flowmap]);
+  const averages = useMemo(() => trackAverages(vocalBars(flowmap)), [flowmap]);
   const stressedOnBeat = useMemo(
-    () => flowmap.bars.reduce((sum, bar) => sum + bar.stressed_on_beat_ratio, 0) / Math.max(1, flowmap.bars.length),
+    () => vocalBars(flowmap).reduce((sum, bar) => sum + bar.stressed_on_beat_ratio, 0) / Math.max(1, vocalBars(flowmap).length),
     [flowmap],
   );
   const kpis = [

@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { RhymeStyles } from '../../flow/colors';
 import { colorToCss } from '../../flow/colors';
 import type { SyllableRect } from '../../flow/layout';
@@ -11,14 +12,31 @@ export type TooltipContent =
   | { kind: 'marker'; marker: MarkerKind };
 
 export interface TooltipState {
+  /** Pointer position (viewport px). */
   x: number;
   y: number;
   content: TooltipContent;
 }
 
+const GAP = 14;
+const MARGIN = 8;
+
+/** Opens below-right of the pointer, flipping left / up when it would leave the flow area
+ *  (and slide under the inspector or the player bar). */
 export function FlowTooltip({ tooltip, styles }: { tooltip: TooltipState; styles: RhymeStyles }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState({ left: tooltip.x + GAP, top: tooltip.y + GAP });
+  useLayoutEffect(() => {
+    const box = ref.current;
+    const area = box?.parentElement?.getBoundingClientRect();
+    if (!box || !area) return;
+    const { width, height } = box.getBoundingClientRect();
+    const left = tooltip.x + GAP + width > area.right - MARGIN ? tooltip.x - GAP - width : tooltip.x + GAP;
+    const top = tooltip.y + GAP + height > area.bottom - MARGIN ? tooltip.y - GAP - height : tooltip.y + GAP;
+    setPlace({ left: Math.max(area.left + MARGIN, left), top: Math.max(area.top + MARGIN, top) });
+  }, [tooltip]);
   return (
-    <div className="tooltip" role="tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+    <div ref={ref} className="tooltip" role="tooltip" style={place}>
       {tooltip.content.kind === 'syllable' && <SyllableBody rect={tooltip.content.rect} styles={styles} />}
       {tooltip.content.kind === 'bar' && <BarBody bar={tooltip.content.bar} />}
       {tooltip.content.kind === 'marker' && <MarkerBody marker={tooltip.content.marker} />}

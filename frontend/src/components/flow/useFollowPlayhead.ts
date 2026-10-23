@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
-import { barIndexMap, rowTop } from '../../flow/layout';
+import { barIndexMap, rowHeight, rowTop } from '../../flow/layout';
 import type { FlowRenderer } from '../../flow/pixi/renderer';
 import type { RenderState } from '../../flow/pixi/types';
 
@@ -66,7 +66,7 @@ export function useFollowPlayhead({ ready, rendererRef, scrollRef, stateRef, aud
 }
 
 function centeredTop(state: RenderState, row: number, scroller: HTMLDivElement): number {
-  const top = rowTop(state.layout, row) - scroller.clientHeight / 2 + state.layout.barH / 2;
+  const top = rowTop(state.layout, row) - scroller.clientHeight / 2 + rowHeight(state.layout, row) / 2;
   return Math.max(0, Math.min(top, scroller.scrollHeight - scroller.clientHeight));
 }
 

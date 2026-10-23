@@ -58,7 +58,7 @@
 .is-open .menu-chevron { transform: rotate(180deg); }
 .menu-popover {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
-  width: 320px; max-height: min(70vh, 560px); overflow: auto;
+  width: 320px; max-height: calc(100vh - var(--header-h) - 24px); overflow: auto;
   padding: 6px; border-radius: var(--radius-lg);
   background: var(--surface); box-shadow: var(--shadow-pop);
 }

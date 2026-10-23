@@ -46,17 +46,17 @@ export function TopBar({ mode, flowmap, isDemo, onModeChange, actions, inspector
         {mode === 'report' && actions}
         {flowmap && (
           <nav className="segmented" aria-label={t('app.navAria')}>
-            <button className={mode === 'viewer' ? 'is-active' : ''} aria-current={mode === 'viewer' ? 'page' : undefined} onClick={() => onModeChange('viewer')}>
-              <Route size={14} /> {t('app.nav.flow')}
+            <button className={mode === 'viewer' ? 'is-active' : ''} aria-current={mode === 'viewer' ? 'page' : undefined} onClick={() => onModeChange('viewer')} title={`${t('app.nav.flow')} (1)`}>
+              <Route size={14} /> <span className="btn-label">{t('app.nav.flow')}</span>
             </button>
-            <button className={mode === 'report' ? 'is-active' : ''} aria-current={mode === 'report' ? 'page' : undefined} onClick={() => onModeChange('report')}>
-              <BarChart3 size={14} /> {t('app.nav.report')}
+            <button className={mode === 'report' ? 'is-active' : ''} aria-current={mode === 'report' ? 'page' : undefined} onClick={() => onModeChange('report')} title={`${t('app.nav.report')} (2)`}>
+              <BarChart3 size={14} /> <span className="btn-label">{t('app.nav.report')}</span>
             </button>
-            <button className={mode === 'lyrics' ? 'is-active' : ''} aria-current={mode === 'lyrics' ? 'page' : undefined} onClick={() => onModeChange('lyrics')}>
-              <ScrollText size={14} /> {t('app.nav.lyrics')}
+            <button className={mode === 'lyrics' ? 'is-active' : ''} aria-current={mode === 'lyrics' ? 'page' : undefined} onClick={() => onModeChange('lyrics')} title={`${t('app.nav.lyrics')} (3)`}>
+              <ScrollText size={14} /> <span className="btn-label">{t('app.nav.lyrics')}</span>
             </button>
-            <button className={mode === 'library' ? 'is-active' : ''} aria-current={mode === 'library' ? 'page' : undefined} onClick={() => onModeChange('library')}>
-              <Library size={14} /> {t('app.nav.library')}
+            <button className={mode === 'library' ? 'is-active' : ''} aria-current={mode === 'library' ? 'page' : undefined} onClick={() => onModeChange('library')} title={`${t('app.nav.library')} (4)`}>
+              <Library size={14} /> <span className="btn-label">{t('app.nav.library')}</span>
             </button>
           </nav>
         )}

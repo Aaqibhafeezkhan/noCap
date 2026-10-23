@@ -7,8 +7,12 @@ export type SheetRow =
 
 export interface SheetSection {
   label: string | null;
+  /** The section's own bar range (for its heading). */
   fromBar: number;
   toBar: number;
+  /** Every bar listed under it: its range plus any bars before the next section, so
+   *  gaps between sections and the bars after the last one still appear. */
+  bars: number[];
   rows: SheetRow[];
 }
 
@@ -20,12 +24,12 @@ export function lyricSheet(flowmap: FlowMap): SheetSection[] {
   const spans = flowmap.sections.length
     ? flowmap.sections.map((section) => ({ label: section.label, from: section.start_bar, to: section.end_bar }))
     : [{ label: null, from: barNumbers[0], to: barNumbers[barNumbers.length - 1] }];
-  return spans.map(({ label, from, to }) => ({
-    label,
-    fromBar: from,
-    toBar: to,
-    rows: rowsFor(flowmap, barNumbers.filter((barNo) => barNo >= from && barNo <= to)),
-  }));
+  return spans.map(({ label, from, to }, index) => {
+    const start = index === 0 ? barNumbers[0] : from;
+    const next = spans[index + 1]?.from ?? Infinity;
+    const bars = barNumbers.filter((barNo) => barNo >= start && barNo < next);
+    return { label, fromBar: from, toBar: to, bars, rows: rowsFor(flowmap, bars) };
+  });
 }
 
 function rowsFor(flowmap: FlowMap, barNumbers: number[]): SheetRow[] {

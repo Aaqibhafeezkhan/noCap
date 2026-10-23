@@ -46,6 +46,8 @@ export interface FlowSyllable {
 
 export interface FlowBar {
   bar_no: number;
+  /** No words in this bar (filled in from the beat grid; see flow/emptyBars). */
+  empty?: boolean;
   syllable_count: number;
   density: number;
   syncopation: number;

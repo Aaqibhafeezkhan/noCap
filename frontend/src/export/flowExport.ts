@@ -1,6 +1,6 @@
 import type { FlowMap } from '../types';
 import { buildRhymeStyles, colorToCss, rhymeColor } from '../flow/colors';
-import { FLOW_DIMS, buildSyllableRows, computeLayout, rowTop } from '../flow/layout';
+import { FLOW_DIMS, buildSyllableRows, computeLayout, rowHeight, rowTop } from '../flow/layout';
 import { fitLabel } from '../flow/pixi/blocks';
 import { CANVAS } from '../flow/theme';
 import { t } from '../i18n';
@@ -54,14 +54,19 @@ export function buildFlowmapSvg(flowmap: FlowMap): string {
   }
   flowmap.bars.forEach((bar, index) => {
     const top = rowTop(layout, index);
-    out.push(`<rect x="${FLOW_DIMS.labelW}" y="${top}" width="${layout.gridW}" height="${layout.barH}" fill="${hex(index % 2 ? CANVAS.rowB : CANVAS.rowA)}"/>`);
+    const height = rowHeight(layout, index);
+    const fill = bar.empty ? CANVAS.emptyRow : index % 2 ? CANVAS.rowB : CANVAS.rowA;
+    out.push(`<rect x="${FLOW_DIMS.labelW}" y="${top}" width="${layout.gridW}" height="${height}" fill="${hex(fill)}"/>`);
     for (let beat = 0; beat <= layout.signature; beat += 1) {
       const x = FLOW_DIMS.labelW + beat * layout.beatW;
-      out.push(line(x, top, x, top + layout.barH, CANVAS.beatLine));
+      out.push(line(x, top, x, top + height, CANVAS.beatLine));
     }
-    out.push(`<text x="${FLOW_DIMS.labelW - 8}" y="${top + layout.barH / 2 + 4}" fill="${hex(CANVAS.label)}" text-anchor="end" font-family="${MONO}" font-size="11">${bar.bar_no}</text>`);
+    if (bar.empty && height < 14 && bar.bar_no % 4 !== 1) return;
+    const size = height < 26 ? 9 : 11;
+    out.push(`<text x="${FLOW_DIMS.labelW - 8}" y="${top + height / 2 + size / 3}" fill="${hex(bar.empty ? CANVAS.otherRhyme : CANVAS.label)}" text-anchor="end" font-family="${MONO}" font-size="${size}">${bar.bar_no}</text>`);
+    if (bar.empty) return;
     const densityW = (FLOW_DIMS.densW - 14) * (bar.density / maxDensity);
-    out.push(`<rect x="${FLOW_DIMS.labelW + layout.gridW + 8}" y="${top + layout.barH / 2 - 3}" width="${Math.max(2, densityW)}" height="6" rx="3" fill="${hex(CANVAS.textMuted)}" opacity="0.7"/>`);
+    out.push(`<rect x="${FLOW_DIMS.labelW + layout.gridW + 8}" y="${top + height / 2 - 3}" width="${Math.max(2, densityW)}" height="6" rx="3" fill="${hex(CANVAS.textMuted)}" opacity="0.7"/>`);
     for (const rect of rows[index]) {
       const color = hex(rhymeColor(styles, rect.syllable.rhyme_group));
       const stressed = rect.syllable.stress;
