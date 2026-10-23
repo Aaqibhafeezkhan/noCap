@@ -40,6 +40,10 @@ hear exactly how a rapper rides the beat.
 - Is the delivery ahead, on, or behind the pocket?
 - Where do the rhyme chains land on the grid?
 
+You can also read the whole track as a lyric sheet, fix any word it misheard
+(the flow map and metrics update with it), and export the lyrics as text or
+synced `.lrc`.
+
 Flow is the part of rap that is hardest to put into words. Producers, rappers and
 fans describe it by ear: "laid back", "on top of the beat", "double time". noCap
 makes it something you can point at, bar by bar.
@@ -50,7 +54,8 @@ makes it something you can point at, bar by bar.
 
 1. Download the latest `.dmg` from [Releases](https://github.com/fatihserhatturan/noCap/releases/latest).
 2. Open it and drag **noCap** into Applications.
-3. Drop in an audio file, or press **Try the demo** to explore a sample verse first.
+3. A short intro shows how to read the flow map the first time you open it.
+4. Drop in an audio file, or press **Try the demo** to explore a sample verse first.
 
 Needs a Mac with Apple Silicon (M1 or later). The app is signed and notarized by
 Apple, everything it needs is bundled, and analysis runs offline on your Mac.
@@ -61,12 +66,15 @@ Apple, everything it needs is bundled, and analysis runs offline on your Mac.
 
 - **Beat detection** — BPM and beat grid from the raw waveform (librosa)
 - **Vocal separation** — Demucs stem isolation for cleaner transcription
-- **Speech recognition** — OpenAI Whisper with word-level timestamps
+- **Speech recognition** — Whisper `medium.en` (MLX on Apple Silicon) with word-level timestamps
+- **Cleaner lyrics** — filters for Whisper hallucinations and a second pass over passages it skipped; measured on a [20-song benchmark](benchmark/PHASE1.md) (WER 33.9 % → 27.6 %)
 - **Syllable alignment** — CMU Pronouncing Dictionary for stress patterns
 - **Flow metrics** — density, syncopation, pocket, timing variance per bar
 - **Rhyme detection** — phonetic matching across perfect, slant, and internal rhymes
 - **Interactive visualization** — WebGL canvas (Pixi.js), hover tooltips, click-to-play
-- **Library** — save and re-open analyzed tracks
+- **Lyrics view** — the whole track as a lyric sheet with rhyme colours; fix misheard words and the analysis updates; export `.txt`, synced `.lrc` or word-timed `.lrc`
+- **Live progress** — plain-language steps, time left and small findings while a track is analysed; cancel at any point
+- **Library** — save and re-open analyzed tracks; a demo verse and a short first-launch intro
 - **macOS desktop app** — self-contained Electron + PyInstaller bundle (no setup required)
 
 ---
@@ -154,7 +162,7 @@ on the target machine.
 
 ```bash
 ./scripts/build-desktop.sh
-# → frontend/dist-app/noCap-0.2.0-arm64.dmg  (Apple Silicon)
+# → frontend/dist-app/noCap-0.3.0-arm64.dmg  (Apple Silicon)
 ```
 
 First build takes ~15 minutes (PyInstaller bundles torch + whisper + demucs).
