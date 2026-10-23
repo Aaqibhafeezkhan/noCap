@@ -22,6 +22,8 @@
 .shortcut-groups dl { display: grid; gap: 10px; }
 .shortcut-groups dl div { display: grid; gap: 4px; }
 .shortcut-groups dt { display: flex; gap: 3px; }
+.shortcuts-intro { display: block; margin: var(--space-5) auto 0; padding: 2px 4px; border: 0; background: none; cursor: pointer; color: var(--muted); font-size: var(--fs-12); text-decoration: underline; text-underline-offset: 3px; }
+.shortcuts-intro:hover { color: var(--text); }
 .shortcut-groups dd { color: var(--text-2); font-size: var(--fs-12); }
 
 .toast {

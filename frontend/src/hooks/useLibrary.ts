@@ -6,8 +6,11 @@ export function useLibrary() {
   const [library, setLibrary] = useState<LibraryTrack[]>([]);
   const [deleteCandidate, setDeleteCandidate] = useState<LibraryTrack | null>(null);
 
-  async function refreshLibrary() {
-    setLibrary(await fetchLibrary());
+  /** Reload the library; resolves to how many tracks it holds. */
+  async function refreshLibrary(): Promise<number> {
+    const tracks = await fetchLibrary();
+    setLibrary(tracks);
+    return tracks.length;
   }
 
   async function openTrack(trackId: string): Promise<{ flowmap: FlowMap; hasAudio: boolean; hasVocals: boolean }> {

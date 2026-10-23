@@ -1,0 +1,46 @@
+/* First-launch welcome dialog. */
+.modal.intro { position: relative; width: min(480px, 100%); padding: var(--space-5) var(--space-5) var(--space-4); text-align: center; }
+.intro-close { position: absolute; top: 12px; right: 12px; }
+.intro-stage { min-height: 330px; animation: intro-in 0.22s var(--ease); }
+.intro-art {
+  display: block; width: 100%; height: 140px; margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg); background: var(--bg-2); border: 1px solid var(--border);
+}
+.intro-art .intro-beat { stroke: var(--border-strong); stroke-width: 1; }
+.intro-art .intro-sub { stroke: var(--border); stroke-width: 1; }
+.intro-art .intro-bar-no { fill: var(--faint); font: 500 9px var(--font-mono); text-anchor: end; }
+.intro-art .intro-arrow { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.intro-syllable { transform-box: fill-box; transform-origin: center; animation: intro-pop 0.3s var(--ease) backwards; }
+
+.intro-screens, .intro-ready { display: flex; align-items: center; justify-content: center; gap: var(--space-3); }
+.intro-screen {
+  position: relative; display: grid; place-items: center; gap: 6px; width: 84px; height: 84px;
+  border-radius: var(--radius-lg); background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text-2); font-size: var(--fs-12); font-weight: 500;
+}
+.intro-screen svg { color: var(--accent); }
+.intro-screen kbd { position: absolute; top: 6px; right: 6px; }
+.intro-ready-icon {
+  display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+  background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-2);
+}
+.intro-ready-icon.is-accent { background: var(--accent); border-color: transparent; color: #0b0b0d; }
+.intro-ready-or { color: var(--muted); font-size: var(--fs-12); }
+
+.intro-count { color: var(--muted); font: 500 var(--fs-11) var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.intro h2 { margin-top: 6px; }
+.intro-body { margin: 8px auto 0; max-width: 40ch; color: var(--text-2); line-height: 1.55; }
+.intro-note { margin-top: 10px; color: var(--muted); font-size: var(--fs-12); }
+.intro-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-5); }
+
+.intro-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); }
+.intro-foot .btn { min-width: 92px; justify-content: center; }
+.intro-dots { display: flex; gap: 6px; }
+.intro-dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: var(--surface-3); transition: width 0.2s var(--ease), background 0.2s; }
+.intro-dots button.is-active { width: 20px; border-radius: 4px; background: var(--accent); }
+
+@keyframes intro-in { from { opacity: 0; transform: translateX(8px); } }
+@keyframes intro-pop { from { opacity: 0; transform: scale(0.6); } }
+@media (prefers-reduced-motion: reduce) {
+  .intro-stage, .intro-syllable { animation: none; }
+}

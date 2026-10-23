@@ -34,7 +34,7 @@ const GROUPS: Array<{ title: 'shortcuts.playback' | 'shortcuts.navigation' | 'sh
   },
 ];
 
-export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+export function ShortcutsDialog({ onClose, onShowIntro }: { onClose: () => void; onShowIntro: () => void }) {
   const ref = useDialog(onClose);
   return (
     <div className="modal-backdrop" role="presentation" onPointerDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -58,6 +58,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             </section>
           ))}
         </div>
+        <button className="shortcuts-intro" onClick={onShowIntro}>{t('intro.again')}</button>
       </section>
     </div>
   );
