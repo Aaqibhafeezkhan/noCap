@@ -82,7 +82,8 @@ def _apply_on_best_device(apply_model, model, wav_tensor):
 
     # shifts=0: Demucs' default shifts=1 is a single pass at a random 0-0.5 s offset,
     # which gives a different stem (and transcript) on every run of the same song.
-    apply = functools.partial(apply_model, shifts=0, progress=False)
+    # progress=True drives tqdm, which nocap.pipeline.progress turns into live progress.
+    apply = functools.partial(apply_model, shifts=0, progress=True)
     device = separation_device()
     with torch.no_grad():
         if device != "cpu":

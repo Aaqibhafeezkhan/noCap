@@ -37,6 +37,7 @@ MESSAGES = {
     "pipeline.loadingAudio": "Loading audio: {path}",
     "pipeline.loaded": "{duration:.1f}s loaded",
     "pipeline.isolating": "Separating vocals...",
+    "pipeline.isolated": "Vocals separated",
     "pipeline.unusableStem": "Vocal separation failed: {reason}",
     "pipeline.vocalsSkipped": "Using original mix...",
     "pipeline.demucsMissing": "Using original mix...",

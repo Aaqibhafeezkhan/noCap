@@ -38,9 +38,9 @@ class CancelRegistry:
 def cancellable(forward, cancel_event: threading.Event):
     """Wrap a progress reporter so every progress tick is also a cancel checkpoint.
 
-    The pipeline reports at each step boundary and on every Whisper progress tick,
-    so raising here stops the job at the next checkpoint. A step that does not
-    report (vocal separation) runs to its end before the cancel takes effect.
+    The pipeline reports at each step boundary and on every progress tick of vocal
+    separation and transcription (see nocap.pipeline.progress), so raising here
+    stops the job within a few seconds.
     """
 
     def report(event: ProgressEvent) -> None:

@@ -1,25 +1,20 @@
 import { useRef, useState } from 'react';
 import { analyzeTrack, cancelAnalysis } from '../api/analyze';
 import { t } from '../i18n';
-import type { AnalyzeMessage, LibraryTrack, StepId, StepState } from '../types';
+import { ANALYSIS_STEPS, idleSteps, type StepProgress } from '../flow/analysisProgress';
+import type { AnalyzeMessage, LibraryTrack, StepId } from '../types';
 
 export type AnalysisStatus = 'idle' | 'running' | 'cancelling' | 'done' | 'cancelled' | 'error';
-
-const initialSteps: Record<StepId, StepState> = {
-  load: { status: 'idle', msg: '' },
-  beat: { status: 'idle', msg: '' },
-  transcribe: { status: 'idle', msg: '' },
-  align: { status: 'idle', msg: '' },
-};
 
 /** One background analysis at a time. Lives at App level so switching screens never
  *  interrupts it; the library shows its progress as a card. */
 export function useAnalysis(onComplete: (track: LibraryTrack | undefined) => void) {
-  const [steps, setSteps] = useState(initialSteps);
+  const [steps, setSteps] = useState<Record<StepId, StepProgress>>(idleSteps);
+  const [findings, setFindings] = useState<Record<string, number>>({});
+  const [startedAt, setStartedAt] = useState(0);
   const [filename, setFilename] = useState('');
   const [error, setError] = useState<{ message: string; trace: string } | null>(null);
   const [status, setStatus] = useState<AnalysisStatus>('idle');
-  const [transcribePct, setTranscribePct] = useState<number | null>(null);
   const trackIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -30,8 +25,9 @@ export function useAnalysis(onComplete: (track: LibraryTrack | undefined) => voi
     trackIdRef.current = null;
     setFilename(file.name);
     setError(null);
-    setSteps(initialSteps);
-    setTranscribePct(null);
+    setSteps(idleSteps());
+    setFindings({});
+    setStartedAt(Date.now());
     setStatus('running');
     try {
       await analyzeTrack(file, handleMessage, controller.signal);
@@ -63,9 +59,9 @@ export function useAnalysis(onComplete: (track: LibraryTrack | undefined) => voi
   function dismiss() {
     setStatus('idle');
     setError(null);
-    setSteps(initialSteps);
+    setSteps(idleSteps());
+    setFindings({});
     setFilename('');
-    setTranscribePct(null);
   }
 
   function handleMessage(message: AnalyzeMessage) {
@@ -77,16 +73,8 @@ export function useAnalysis(onComplete: (track: LibraryTrack | undefined) => voi
         setStatus('cancelled');
         return;
       case 'progress':
-        if (message.pct !== undefined) {
-          setTranscribePct(message.pct);
-          setSteps((prev) => ({ ...prev, [message.step]: { ...prev[message.step], status: 'active' } }));
-          return;
-        }
-        setSteps((prev) => ({
-          ...prev,
-          [message.step]: { status: message.done ? 'done' : 'active', msg: message.msg || prev[message.step].msg },
-        }));
-        if (message.step === 'transcribe' && message.done) setTranscribePct(100);
+        setSteps((prev) => advance(prev, message.step, message.done === true, message.pct));
+        if (message.info) setFindings((prev) => ({ ...prev, ...message.info }));
         return;
       case 'complete':
         setStatus('done');
@@ -99,10 +87,34 @@ export function useAnalysis(onComplete: (track: LibraryTrack | undefined) => voi
     }
   }
 
-  return { steps, filename, error, status, transcribePct, start, cancel, dismiss };
+  return { steps, findings, startedAt, filename, error, status, start, cancel, dismiss };
 }
 
 export type AnalysisState = ReturnType<typeof useAnalysis>;
+
+/** Apply one progress message: the step becomes active (or done), steps before it that
+ *  never ran (vocal separation when it is unavailable) are skipped. */
+function advance(prev: Record<StepId, StepProgress>, step: StepId, done: boolean, pct: number | undefined): Record<StepId, StepProgress> {
+  const next = { ...prev };
+  const index = ANALYSIS_STEPS.findIndex((item) => item.id === step);
+  ANALYSIS_STEPS.slice(0, index).forEach(({ id }) => {
+    if (next[id].status === 'idle') next[id] = { ...next[id], status: 'skipped' };
+    else if (next[id].status === 'active') next[id] = { ...next[id], status: 'done' };
+  });
+  const current = next[step];
+  const now = Date.now();
+  const reported = pct !== undefined && pct !== current.pct;
+  next[step] = {
+    ...current,
+    status: done ? 'done' : 'active',
+    pct: done ? 100 : pct ?? current.pct,
+    pctAt: reported ? now : current.pctAt,
+    prevPct: reported ? current.pct ?? 0 : current.prevPct,
+    prevPctAt: reported ? current.pctAt ?? current.startedAt ?? now : current.prevPctAt,
+    startedAt: current.startedAt ?? now,
+  };
+  return next;
+}
 
 /** System notification when the window is in the background (works in Electron and browsers). */
 function notifyDone(title: string) {

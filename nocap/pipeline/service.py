@@ -6,6 +6,7 @@ from nocap.i18n import msg
 
 from .audio_context import compute_context_metrics
 from .models import AnalysisOptions, AnalysisResult, ProgressEvent, ProgressReporter
+from .progress import throttled, track_progress
 from .words import analyze_lines, analyze_transcript_words
 
 
@@ -18,7 +19,7 @@ def analyze_track(
 
     _emit(reporter, "load", msg("pipeline.loadingAudio", path=audio_path))
     audio_data = load(audio_path)
-    _emit(reporter, "load", msg("pipeline.loaded", duration=audio_data.duration), True)
+    _emit(reporter, "load", msg("pipeline.loaded", duration=audio_data.duration), True, {"duration": round(audio_data.duration, 1)})
 
     # Beat detection runs on the original mix — no dependency on vocal separation.
     # Must happen before vocal separation so step order matches the UI: load → beat → transcribe.
@@ -29,8 +30,10 @@ def analyze_track(
 
     if options.separate:
         from nocap.audio.separator import assess_vocal_stem, separate
-        _emit(reporter, "transcribe", msg("pipeline.isolating"))
-        vocals = separate(audio_data)          # raises ImportError if Demucs missing
+        _emit(reporter, "separate", msg("pipeline.isolating"))
+        with track_progress(_percent(reporter, "separate")):
+            vocals = separate(audio_data)          # raises ImportError if Demucs missing
+        _emit(reporter, "separate", msg("pipeline.isolated"), True)
         stem_quality = assess_vocal_stem(vocals, audio_data)
         if not stem_quality.usable:
             raise ValueError(msg("pipeline.unusableStem", reason=stem_quality.reason))
@@ -96,7 +99,7 @@ def _build_grid(audio_data, options: AnalysisOptions, reporter: ProgressReporter
         from nocap.audio.beat_tracker import track
         _emit(reporter, "beat", msg("pipeline.detectingBeats"))
         grid = track(audio_data)
-        _emit(reporter, "beat", msg("pipeline.bpm", bpm=grid.bpm), True)
+        _emit(reporter, "beat", msg("pipeline.bpm", bpm=grid.bpm), True, {"bpm": round(grid.bpm)})
     return _apply_offsets(grid, options, reporter)
 
 
@@ -117,16 +120,17 @@ def _transcribe(audio_data, options: AnalysisOptions, reporter: ProgressReporter
 
     _emit(reporter, "transcribe", msg("pipeline.loadingWhisper"))
 
-    def on_whisper_progress(pct: int) -> None:
-        if reporter is not None:
-            reporter(ProgressEvent("transcribe", "", done=False, pct=pct))
+    progress = _percent(reporter, "transcribe")
+
+    def on_whisper_progress(pct: int) -> None:  # whisper.cpp reports its own percentage
+        progress(0.85 * pct / 100)
 
     tr = transcribe(
         audio_data, language=options.language, whisper_progress_callback=on_whisper_progress,
-        vocal_stem=options.separate,
+        vocal_stem=options.separate, on_progress=progress,
     )
     require_word_timestamps(tr)
-    _emit(reporter, "transcribe", msg("pipeline.languageWords", count=len(tr.words)), True)
+    _emit(reporter, "transcribe", msg("pipeline.languageWords", count=len(tr.words)), True, {"words": len(tr.words)})
     return words_to_timed_lines(tr.words), tr.words
 
 
@@ -148,8 +152,7 @@ def _finish(*, title, grid, lines, audio_path, duration, transcript_words, audio
     bars = compute_bar_metrics(aligned, grid)
     summary = compute_summary(bars, aligned)
     context = compute_context_metrics(audio_data, grid, bars)
-    _emit(reporter, "align", msg("pipeline.syllablesMapped", count=len(aligned)), True)
-    return build_flowmap(
+    flowmap = build_flowmap(
         title=title,
         grid=grid,
         syllables=aligned,
@@ -167,8 +170,18 @@ def _finish(*, title, grid, lines, audio_path, duration, transcript_words, audio
         bar_spectral=context.bar_spectral,
         sections=context.sections,
     )
+    found = {"rhyme_groups": len(flowmap["rhyme_groups"]), "bars": len({beat.bar_no for beat in grid.beats})}
+    _emit(reporter, "align", msg("pipeline.syllablesMapped", count=len(aligned)), True, found)
+    return flowmap
 
 
-def _emit(reporter: ProgressReporter | None, step: str, message: str, done: bool = False) -> None:
+def _emit(reporter: ProgressReporter | None, step: str, message: str, done: bool = False, info: dict | None = None) -> None:
     if reporter is not None:
-        reporter(ProgressEvent(step, message, done))
+        reporter(ProgressEvent(step, message, done, info=info))
+
+
+def _percent(reporter: ProgressReporter | None, step: str):
+    """A 0–1 progress callback for ``step`` that sends whole percentages, every 2 points."""
+    if reporter is None:
+        return lambda _fraction: None
+    return throttled(lambda pct: reporter(ProgressEvent(step, "", pct=pct)))

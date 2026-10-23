@@ -11,10 +11,12 @@ import tempfile
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from nocap.i18n import msg
 from nocap.audio import gap_repair, hallucination, stem_decoding, vocal_segments
 from nocap.audio.loader import AudioData, resample_to_16k
+from nocap.pipeline.progress import scaled, track_progress
 from nocap.text.parser import TimedLine
 
 
@@ -68,6 +70,7 @@ def transcribe(
     temperature: float = 0.0,
     whisper_progress_callback=None,
     vocal_stem: bool = False,
+    on_progress: Callable[[float], None] | None = None,
 ) -> TranscriptResult:
     if progress_callback:
         progress_callback(msg("audio.loadingWhisperModel"))
@@ -77,17 +80,19 @@ def transcribe(
     audio_arr = resample_to_16k(audio)
     options = dict(language=language, initial_prompt=initial_prompt, beam_size=beam_size, temperature=temperature)
     options = stem_decoding.options(options, vocal_stem)
-    if vocal_stem and vocal_segments.enabled():  # one decode per sung phrase group
-        result = vocal_segments.transcribe(audio_arr, lambda clip: _run_backends(clip, condition_on_previous_text=False, **options))
-    else:
-        result = _run_backends(audio_arr, whisper_progress_callback=whisper_progress_callback, **options)
+    progress = on_progress or (lambda _fraction: None)  # first pass 0–85 %, gap repair the rest
+    with track_progress(scaled(progress, 0.0, 0.85)):
+        if vocal_stem and vocal_segments.enabled():  # one decode per sung phrase group
+            result = vocal_segments.transcribe(audio_arr, lambda clip: _run_backends(clip, condition_on_previous_text=False, **options))
+        else:
+            result = _run_backends(audio_arr, whisper_progress_callback=whisper_progress_callback, **options)
     # Before gap repair: a runaway token can span 30 s and hide a hole from it.
     words = hallucination.clean(audio_arr, _filter_words(_extract_words(result)), vocal_stem)
     if vocal_stem:  # fill holes where the stem is sung but the first pass found nothing
         def decode_clip(clip):
             clip_result = _run_backends(clip, condition_on_previous_text=False, **options)
             return _filter_words(_extract_words(clip_result))
-        words = gap_repair.repair(audio_arr, words, decode_clip)
+        words = gap_repair.repair(audio_arr, words, decode_clip, on_progress=scaled(progress, 0.85, 1.0))
     words = hallucination.clean(audio_arr, words, vocal_stem)
     timed_lines = _segments_to_timed_lines(result)
 

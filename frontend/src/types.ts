@@ -1,4 +1,4 @@
-export type StepId = 'load' | 'beat' | 'transcribe' | 'align';
+export type StepId = 'load' | 'beat' | 'separate' | 'transcribe' | 'align';
 
 export interface FlowBeat {
   time: number;
@@ -166,7 +166,7 @@ export interface LibraryTrack {
 export type AnalyzeMessage =
   | { type: 'started'; track_id: string; title: string }
   | { type: 'cancelled'; track_id: string }
-  | { type: 'progress'; step: StepId; msg?: string; done?: boolean; pct?: number }
+  | { type: 'progress'; step: StepId; msg?: string; done?: boolean; pct?: number; info?: Record<string, number> }
   | { type: 'complete'; flowmap: FlowMap; track?: LibraryTrack; has_vocals: boolean }
   | { type: 'error'; msg: string; trace?: string };
 

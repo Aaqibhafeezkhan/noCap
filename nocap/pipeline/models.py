@@ -13,6 +13,8 @@ class ProgressEvent:
     message: str
     done: bool = False
     pct: int | None = None
+    # What a finished step found, shown to the user (e.g. {"bpm": 99}).
+    info: dict[str, Any] | None = None
 
 
 ProgressReporter = Callable[[ProgressEvent], None]

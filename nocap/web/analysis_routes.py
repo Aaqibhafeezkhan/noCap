@@ -73,6 +73,8 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
                         kwargs: dict = {"step": item.step, "msg": item.message, "done": item.done}
                         if item.pct is not None:
                             kwargs["pct"] = item.pct
+                        if item.info:
+                            kwargs["info"] = item.info
                         yield sse("progress", **kwargs)
                         continue
                     finished = True

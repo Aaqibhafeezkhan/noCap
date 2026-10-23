@@ -65,7 +65,7 @@ def find_gaps(audio: np.ndarray, words: list) -> list[tuple[float, float]]:
     return [(a, b) for a, b in gaps if b - a >= MIN_GAP]
 
 
-def repair(audio: np.ndarray, words: list, decode: Decode) -> list:
+def repair(audio: np.ndarray, words: list, decode: Decode, on_progress: Callable[[float], None] | None = None) -> list:
     """Fill vocal-active holes in ``words`` by decoding each hole on its own.
 
     ``decode`` transcribes a 16 kHz clip without previous-text conditioning and
@@ -74,8 +74,13 @@ def repair(audio: np.ndarray, words: list, decode: Decode) -> list:
     words = collapse_repeats(words)
     added: list = []
     duration = len(audio) / SAMPLE_RATE
-    for gap_start, gap_end in find_gaps(audio, words):
+    gaps = find_gaps(audio, words)
+    for index, (gap_start, gap_end) in enumerate(gaps):
         added.extend(_fill(audio, gap_start, gap_end, min(duration, gap_end + CLIP_PAD), decode))
+        if on_progress:
+            on_progress((index + 1) / len(gaps))
+    if on_progress:
+        on_progress(1.0)
     if not added:
         return words
     return collapse_repeats(sorted(words + added, key=lambda w: w.start))

@@ -1,22 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, Loader2, X } from 'lucide-react';
+import { ANALYSIS_STEPS, REPAIR_FROM_PCT, overallProgress, secondsLeft } from '../../flow/analysisProgress';
 import type { AnalysisState } from '../../hooks/useAnalysis';
 import { t } from '../../i18n';
 import type { StepId } from '../../types';
-
-const STEPS: Array<{ id: StepId; weight: [number, number] }> = [
-  { id: 'load', weight: [0, 10] },
-  { id: 'beat', weight: [10, 25] },
-  { id: 'transcribe', weight: [25, 85] },
-  { id: 'align', weight: [85, 100] },
-];
+import { AnalysisFindings } from './AnalysisFindings';
+import { AnalysisTips } from './AnalysisTips';
 
 /** The running (or just finished / failed) analysis, shown in the library grid. */
 export function AnalysisCard({ analysis }: { analysis: AnalysisState }) {
   const [showTrace, setShowTrace] = useState(false);
-  const { status, steps, transcribePct, error } = analysis;
-  const progress = overall(analysis);
+  const { status, steps, findings, error } = analysis;
   const busy = status === 'running' || status === 'cancelling';
+  const now = useClock(busy);
+  const progress = useMonotonic(overallProgress(steps, now), analysis.startedAt);
+  const remaining = useSmoothedSeconds(busy ? secondsLeft(progress, now - analysis.startedAt) : null);
   const title = status === 'error' ? t('analysis.failed') : status === 'cancelled' ? t('analysis.cancelled') : status === 'cancelling' ? t('analysis.cancelling') : t('analysis.running');
 
   return (
@@ -37,23 +35,33 @@ export function AnalysisCard({ analysis }: { analysis: AnalysisState }) {
 
       {status !== 'error' && (
         <>
-          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)} aria-label={t('analysis.progressAria')}>
-            <span style={{ width: `${progress}%` }} />
+          <div className="analysis-meter">
+            <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)} aria-label={t('analysis.progressAria')}>
+              <span style={{ width: `${progress}%` }} />
+            </div>
+            <b>{Math.floor(progress)}%</b>
           </div>
+          {status === 'running' && <p className="analysis-eta">{timeLeftText(remaining)}</p>}
           <ol className="analysis-steps">
-            {STEPS.map((step) => {
-              const state = steps[step.id].status;
+            {ANALYSIS_STEPS.filter((step) => steps[step.id].status !== 'skipped').map((step) => {
+              const state = shownState(steps, step.id, status === 'running');
+              const repairing = step.id === 'transcribe' && state.status === 'active' && (state.pct ?? 0) >= REPAIR_FROM_PCT;
               return (
-                <li key={step.id} className={`is-${state}`}>
+                <li key={step.id} className={`is-${state.status}`}>
                   <span className="step-icon" aria-hidden="true">
-                    {state === 'done' ? <Check size={12} strokeWidth={3} /> : state === 'active' && busy ? <Loader2 size={12} className="spin" /> : null}
+                    {state.status === 'done' ? <Check size={12} strokeWidth={3} /> : state.status === 'active' && busy ? <Loader2 size={12} className="spin" /> : null}
                   </span>
-                  <span>{t(`progress.${step.id}`)}</span>
-                  {step.id === 'transcribe' && state === 'active' && transcribePct !== null && <b>{transcribePct}%</b>}
+                  <span className="step-text">
+                    {t(`progress.${step.id}`)}
+                    {repairing && <small>{t('progress.transcribeRepair')}</small>}
+                  </span>
+                  {state.status === 'active' && state.pct !== null && <b>{state.pct}%</b>}
                 </li>
               );
             })}
           </ol>
+          <AnalysisFindings findings={findings} />
+          {status === 'running' && <AnalysisTips />}
           {status === 'cancelling' && <p className="analysis-note">{t('analysis.cancellingNote')}</p>}
         </>
       )}
@@ -75,15 +83,44 @@ export function AnalysisCard({ analysis }: { analysis: AnalysisState }) {
   );
 }
 
-function overall(analysis: AnalysisState): number {
-  let value = 0;
-  for (const step of STEPS) {
-    const state = analysis.steps[step.id].status;
-    if (state === 'done') value = step.weight[1];
-    else if (state === 'active') {
-      const fraction = step.id === 'transcribe' && analysis.transcribePct !== null ? analysis.transcribePct / 100 : 0.15;
-      value = step.weight[0] + (step.weight[1] - step.weight[0]) * fraction;
-    }
-  }
-  return value;
+/** Between two steps nothing is "active" for a moment; show the next step as working. */
+function shownState(steps: AnalysisState['steps'], id: StepId, running: boolean) {
+  const state = steps[id];
+  if (!running || state.status !== 'idle' || ANALYSIS_STEPS.some((step) => steps[step.id].status === 'active')) return state;
+  const next = ANALYSIS_STEPS.find((step) => steps[step.id].status === 'idle');
+  return next?.id === id ? { ...state, status: 'active' as const } : state;
+}
+
+/** Re-render twice a second while busy, so steps without a percentage still move. */
+function useClock(active: boolean): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(timer);
+  }, [active]);
+  return now;
+}
+
+/** The bar never goes backwards during one analysis; ``runKey`` (its start time) resets it. */
+function useMonotonic(value: number, runKey: number): number {
+  const ref = useRef({ runKey, best: 0 });
+  if (ref.current.runKey !== runKey) ref.current = { runKey, best: 0 };
+  ref.current.best = Math.max(ref.current.best, value);
+  return ref.current.best;
+}
+
+/** Ease the estimate so it does not jump around from one tick to the next. */
+function useSmoothedSeconds(value: number | null): number | null {
+  const smooth = useRef<number | null>(null);
+  if (value === null) smooth.current = null;
+  else smooth.current = smooth.current === null ? value : smooth.current * 0.85 + value * 0.15;
+  return smooth.current;
+}
+
+function timeLeftText(seconds: number | null): string {
+  if (seconds === null) return t('analysis.timeUsual');
+  if (seconds < 45) return t('analysis.timeLessMinute');
+  if (seconds < 90) return t('analysis.timeAboutMinute');
+  return t('analysis.timeMinutes', { minutes: Math.round(seconds / 60) });
 }
