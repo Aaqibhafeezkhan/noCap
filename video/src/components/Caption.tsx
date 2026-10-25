@@ -1,9 +1,10 @@
 import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { COLORS, FONTS } from '../theme';
+import { BEAT } from '../timeline';
 
 type Props = { index: number; kicker: string; text: string; length: number };
 
-/** Lower-third caption: a numbered kicker, then the line rising word by word.
+/** Lower-third caption: a numbered kicker, then the line rising word by word on sixteenths.
  *  Rendered inside a Sequence, so frame 0 is the scene's first frame. */
 export function Caption({ index, kicker, text, length }: Props) {
   const frame = useCurrentFrame();
@@ -45,7 +46,7 @@ export function Caption({ index, kicker, text, length }: Props) {
         </div>
         <div style={{ fontFamily: FONTS.display, fontWeight: 700, fontSize: 64, lineHeight: 1.1, color: COLORS.text, letterSpacing: '-0.02em' }}>
           {words.map((word, i) => {
-            const rise = spring({ frame: frame - 4 - i * 2, fps, config: { damping: 16, mass: 0.6 } });
+            const rise = spring({ frame: frame - 3 - Math.round((i * BEAT) / 4), fps, config: { damping: 16, mass: 0.6 } });
             return (
               <span key={i} style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', paddingBottom: 14, marginBottom: -14, marginRight: '0.26em' }}>
                 <span style={{ display: 'inline-block', transform: `translateY(${(1 - rise) * 110}%)` }}>{word}</span>

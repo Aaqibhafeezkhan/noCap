@@ -1,11 +1,11 @@
 import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { COLORS } from '../theme';
-import { BEAT } from '../timeline';
+import { kick } from '../beat';
 
-/** Dark stage with a slow red glow that breathes on the beat, plus a faint grid. */
+/** Dark stage with a slow red glow that pumps with the kick, plus a faint grid. */
 export function Background() {
   const frame = useCurrentFrame();
-  const pulse = Math.exp(-((frame % BEAT) / BEAT) * 4) * 0.08;
+  const pulse = kick(frame) * 0.12;
   const drift = Math.sin(frame / 90) * 60;
   return (
     <AbsoluteFill style={{ background: COLORS.bg }}>

@@ -1,15 +1,19 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { COLORS } from '../theme';
-import { bars } from '../timeline';
+import marks from '../marks.json';
+import { barOf, bars } from '../timeline';
 
 /** A glowing outline drawn over the app (CSS px of the recording), between two bar positions. */
 type Mark = { from: number; to: number; x: number; y: number; w: number; h: number };
 
+const pocket = barOf(marks.scenes.pocket + 1.1);
+const inspector = barOf(marks.clicks[2] + 2.2);
+
 const MARKS: Mark[] = [
-  // Inspector: the selected bar's lyrics, coloured by rhyme group.
-  { from: 7.3, to: 7.95, x: 1128, y: 428, w: 304, h: 76 },
   // Pocket: the tooltip's timing row ("33 ms behind").
-  { from: 8.3, to: 8.75, x: 348, y: 512, w: 192, h: 26 },
+  { from: pocket, to: pocket + 0.5, x: 348, y: 512, w: 192, h: 26 },
+  // Inspector: the selected bar's lyrics, coloured by rhyme group.
+  { from: inspector, to: inspector + 0.7, x: 1128, y: 428, w: 304, h: 76 },
 ];
 
 function Outline({ mark }: { mark: Mark }) {

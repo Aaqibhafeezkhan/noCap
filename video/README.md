@@ -1,9 +1,10 @@
 # noCap promo video
 
-A 45-second promo (1920×1080, 30 fps), edited in code with [Remotion](https://www.remotion.dev).
-The footage is a scripted walkthrough of the demo track. The soundtrack is a 92 BPM
-boom-bap beat with UI sound effects, all synthesized by the scripts here, so it is
-royalty-free.
+A 54-second promo (1920×1080, 30 fps), edited in code with [Remotion](https://www.remotion.dev).
+The footage is a scripted walkthrough: a track is analyzed, explored, its lyrics fixed
+and exported. The API is faked during the recording (`capture/mocks.mjs`), so nothing
+waits on Whisper and only the demo verse is shown. The soundtrack is a 140 BPM trap
+beat with sound effects, all synthesized by the scripts here, so it is royalty-free.
 
 ## Rebuild
 
@@ -28,10 +29,12 @@ npm run render                                                # out/nocap-promo.
 
 ## Layout
 
-- `src/timeline.ts`: tempo, scene list, captions and footage timing. Scenes start on bar lines.
+- `src/timeline.ts`: tempo, scene list, captions and footage timing (with a speed ramp per scene). Scenes start on bar lines.
+- `src/beat.ts`: kick, clap and drop envelopes from `src/beatmap.json` (written by `make_beat.py`); the visual hits read from these.
 - `src/camera.ts`: camera keyframes (in bars) over the app window.
 - `src/Soundtrack.tsx`: the beat, plus each sound effect at its frame. Clicks follow `marks.json`.
+- `src/scenes/Hook.tsx`, `src/scenes/Outro.tsx`: the opening type and the closing card with the macOS and Windows downloads.
 - `audio/`: beat and sound-effect synthesis (numpy/scipy).
-- `capture/`: recording at 2x through the Chrome DevTools screencast, and the H.264 encoder.
+- `capture/`: recording at 2x through the Chrome DevTools screencast (needs `npx tsx` for the demo data), and the H.264 encoder.
 
 The generated footage, audio and renders (`public/clips`, `public/audio`, `out`) are not committed.
