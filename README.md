@@ -12,12 +12,13 @@
 <p align="center">
   <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><img src="https://img.shields.io/github/v/release/fatihserhatturan/noCap?label=release&color=ff3d00" alt="latest release" /></a>
   <img src="https://img.shields.io/badge/macOS-Apple%20Silicon-lightgrey?logo=apple" alt="macOS on Apple Silicon" />
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-lightgrey?logo=windows" alt="Windows 10 and 11" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
 </p>
 
 <p align="center">
   <a href="https://fatihserhatturan.github.io/noCap/"><strong>Website</strong></a> ·
-  <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><strong>Download for macOS</strong></a> ·
+  <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><strong>Download for macOS and Windows</strong></a> ·
   <a href="https://fatihserhatturan.github.io/noCap/#watch"><strong>Watch the 45-second promo</strong></a>
 </p>
 
@@ -52,13 +53,28 @@ makes it something you can point at, bar by bar.
 
 ## Install
 
+Everything noCap needs is bundled, and analysis runs offline on your computer.
+The first time you open it, a short intro shows how to read the flow map; drop in
+an audio file, or press **Try the demo** to explore a sample verse first.
+
+### macOS
+
 1. Download the latest `.dmg` from [Releases](https://github.com/fatihserhatturan/noCap/releases/latest).
 2. Open it and drag **noCap** into Applications.
-3. A short intro shows how to read the flow map the first time you open it.
-4. Drop in an audio file, or press **Try the demo** to explore a sample verse first.
 
-Needs a Mac with Apple Silicon (M1 or later). The app is signed and notarized by
-Apple, everything it needs is bundled, and analysis runs offline on your Mac.
+Needs a Mac with Apple Silicon (M1 or later). The app is signed and notarized by Apple.
+
+### Windows
+
+1. Download both `noCap-<version>-win-x64.7z.001` and `.7z.002` from
+   [Releases](https://github.com/fatihserhatturan/noCap/releases/latest) into the same folder
+   (the app is split in two because of GitHub's file size limit).
+2. Open the `.001` file with [7-Zip](https://www.7-zip.org/) and extract it.
+3. Run `noCap.exe` from the extracted folder.
+
+Needs 64-bit Windows 10 or 11. An NVIDIA graphics card speeds up analysis; without
+one it runs on the processor, just slower. The Windows build isn't code-signed yet,
+so SmartScreen may warn you the first time: choose **More info → Run anyway**.
 
 ---
 
@@ -75,7 +91,7 @@ Apple, everything it needs is bundled, and analysis runs offline on your Mac.
 - **Lyrics view** — the whole track as a lyric sheet with rhyme colours; fix misheard words and the analysis updates; export `.txt`, synced `.lrc` or word-timed `.lrc`
 - **Live progress** — plain-language steps, time left and small findings while a track is analysed; cancel at any point
 - **Library** — save and re-open analyzed tracks; a demo verse and a short first-launch intro
-- **macOS desktop app** — self-contained Electron + PyInstaller bundle (no setup required)
+- **Desktop app for macOS and Windows** — self-contained Electron + PyInstaller bundle (no setup required)
 
 ---
 
@@ -258,7 +274,8 @@ Bug reports, ideas and pull requests are welcome.
 
 ## Roadmap
 
-- Builds for Intel Macs and Windows
+- Builds for Intel Macs and Linux
+- A signed Windows installer
 - Better support for lyrics in languages other than English
 - Comparing two verses or two rappers side by side
 - More export formats for the flow map and the report
