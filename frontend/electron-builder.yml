@@ -62,6 +62,14 @@ dmg:
       type: link
       path: /Applications
 
+win:
+  icon: build/icon.png  # 1024px; electron-builder derives the .ico
+  # The bundled CUDA torch + Whisper model are several GB, past NSIS's 2 GB installer
+  # limit, so Windows ships as an unpacked folder (win-unpacked/noCap.exe).
+  target:
+    - target: dir
+      arch: [x64]
+
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

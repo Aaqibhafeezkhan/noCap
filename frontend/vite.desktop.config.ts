@@ -32,6 +32,8 @@ export default defineConfig({
     port: 8765,
     strictPort: true,
     proxy: { '/api': 'http://localhost:5757' },
+    // Packaging output (multi-GB models, backend bundle); watching it fails on Windows (EBUSY).
+    watch: { ignored: ['**/build/**', '**/dist-app/**'] },
   },
   build: {
     outDir: 'dist',
