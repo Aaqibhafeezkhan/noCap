@@ -19,7 +19,7 @@
 <p align="center">
   <a href="https://fatihserhatturan.github.io/noCap/"><strong>Website</strong></a> ·
   <a href="https://github.com/fatihserhatturan/noCap/releases/latest"><strong>Download for macOS and Windows</strong></a> ·
-  <a href="https://fatihserhatturan.github.io/noCap/#watch"><strong>Watch the 45-second promo</strong></a>
+  <a href="https://fatihserhatturan.github.io/noCap/#watch"><strong>Watch the one-minute promo</strong></a>
 </p>
 
 <p align="center">
