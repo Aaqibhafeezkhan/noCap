@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename)
 
 const BACKEND_PORT = 5757
 const isDev = !app.isPackaged
+const isWindows = process.platform === 'win32'
 
 let backendProcess: ChildProcess | null = null
 let mainWindow: BrowserWindow | null = null
@@ -39,8 +40,10 @@ function spawnBackend(): void {
   // In prod: bundled nocap-server binary lives in Resources/backend/
   if (isDev) {
     const projectRoot = path.join(app.getAppPath(), '..')
-    const venvPython = path.join(projectRoot, '.venv', 'bin', 'python3')
-    const pythonExe = existsSync(venvPython) ? venvPython : 'python3'
+    const venvPython = isWindows
+      ? path.join(projectRoot, '.venv', 'Scripts', 'python.exe')
+      : path.join(projectRoot, '.venv', 'bin', 'python3')
+    const pythonExe = existsSync(venvPython) ? venvPython : (isWindows ? 'python' : 'python3')
     backendProcess = spawn(
       pythonExe,
       ['-m', 'nocap.web.desktop', '--port', String(BACKEND_PORT)],
@@ -48,8 +51,11 @@ function spawnBackend(): void {
     )
   } else {
     // nocap-server is a PyInstaller onedir bundle: Resources/backend/nocap-server/nocap-server
-    const serverBin = path.join(process.resourcesPath, 'backend', 'nocap-server', 'nocap-server')
+    const serverBin = path.join(
+      process.resourcesPath, 'backend', 'nocap-server', isWindows ? 'nocap-server.exe' : 'nocap-server',
+    )
     backendProcess = spawn(serverBin, ['--port', String(BACKEND_PORT)], {
+      windowsHide: true,
       env: {
         ...process.env,
         // Tell the Python backend where bundled assets (Whisper model) live
@@ -73,8 +79,10 @@ async function createWindow(): Promise<void> {
     height: 900,
     minWidth: 1024,
     minHeight: 700,
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 20, y: 22 },
+    // Inset title bar is macOS-only; elsewhere it would hide the window controls.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 20, y: 22 } }
+      : { autoHideMenuBar: true }),
     backgroundColor: '#0a0a0a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),

@@ -10,8 +10,9 @@ import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles.css';
 
-// The Electron window hides its title bar; the header leaves room for the traffic lights.
-if (navigator.userAgent.includes('Electron')) document.documentElement.classList.add('is-electron');
+// On macOS the Electron window hides its title bar; the header leaves room for the traffic lights.
+const ua = navigator.userAgent;
+if (ua.includes('Electron') && ua.includes('Macintosh')) document.documentElement.classList.add('is-electron');
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
