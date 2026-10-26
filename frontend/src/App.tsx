@@ -135,7 +135,7 @@ export function App() {
         actions={flowmap && (
           <>
             {mode === 'viewer' && <LayersMenu layers={viewer.layers} onChange={viewer.setLayers} />}
-            <ExportMenu flowmap={flowmap} />
+            <ExportMenu flowmap={flowmap} isReport={mode === 'report'} />
           </>
         )}
       />
