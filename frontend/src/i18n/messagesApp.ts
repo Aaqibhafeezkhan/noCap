@@ -12,6 +12,7 @@ export const appMessages = {
   'export.action': 'Export',
   'export.png': 'Flow map as PNG',
   'export.svg': 'Flow map as SVG',
+  'export.reportPng': 'Report as PNG',
   'export.unavailable': 'Image export is not available here.',
   'export.failed': 'Could not render the export image.',
   'library.title': 'Library',

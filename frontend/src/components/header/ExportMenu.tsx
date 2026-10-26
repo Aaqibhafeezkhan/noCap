@@ -1,10 +1,11 @@
 import { ChevronDown, Download, FileCode2, FileImage } from 'lucide-react';
 import { downloadFlowmapPng, downloadFlowmapSvg } from '../../export/flowExport';
+import { downloadReportPng } from '../../export/reportExport';
 import { usePopover } from '../../hooks/usePopover';
 import { t } from '../../i18n';
 import type { FlowMap } from '../../types';
 
-export function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
+export function ExportMenu({ flowmap, isReport }: { flowmap: FlowMap; isReport: boolean }) {
   const popover = usePopover();
 
   function run(action: () => void | Promise<void>) {
@@ -26,12 +27,20 @@ export function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
       </button>
       {popover.open && (
         <div className="menu-popover menu-popover-sm" role="menu">
-          <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapPng(flowmap))}>
-            <FileImage size={15} /> <span>{t('export.png')}</span>
-          </button>
-          <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapSvg(flowmap))}>
-            <FileCode2 size={15} /> <span>{t('export.svg')}</span>
-          </button>
+          {isReport ? (
+            <button role="menuitem" className="menu-item" onClick={() => run(() => downloadReportPng(flowmap.metadata.title))}>
+              <FileImage size={15} /> <span>{t('export.reportPng')}</span>
+            </button>
+          ) : (
+            <>
+              <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapPng(flowmap))}>
+                <FileImage size={15} /> <span>{t('export.png')}</span>
+              </button>
+              <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapSvg(flowmap))}>
+                <FileCode2 size={15} /> <span>{t('export.svg')}</span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
