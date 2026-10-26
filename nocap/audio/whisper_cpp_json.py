@@ -103,4 +103,3 @@ def _seconds_from_timestamp(value: str) -> float:
         minutes, seconds = parts
         return int(minutes) * 60 + float(seconds)
     return float(value or 0)
-    

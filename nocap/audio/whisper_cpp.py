@@ -174,4 +174,3 @@ def _write_wav_16k(path: Path, audio_arr) -> None:
         wav.setsampwidth(2)
         wav.setframerate(16000)
         wav.writeframes(pcm.tobytes())
-        

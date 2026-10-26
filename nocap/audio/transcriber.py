@@ -177,4 +177,3 @@ def _segments_to_timed_lines(result: dict) -> list[TimedLine]:
                 text=text,
             ))
     return lines
-    
