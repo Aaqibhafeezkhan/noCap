@@ -27,20 +27,17 @@ export function ExportMenu({ flowmap, isReport }: { flowmap: FlowMap; isReport: 
       </button>
       {popover.open && (
         <div className="menu-popover menu-popover-sm" role="menu">
-          {isReport ? (
+          {isReport && (
             <button role="menuitem" className="menu-item" onClick={() => run(() => downloadReportPng(flowmap.metadata.title))}>
               <FileImage size={15} /> <span>{t('export.reportPng')}</span>
             </button>
-          ) : (
-            <>
-              <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapPng(flowmap))}>
-                <FileImage size={15} /> <span>{t('export.png')}</span>
-              </button>
-              <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapSvg(flowmap))}>
-                <FileCode2 size={15} /> <span>{t('export.svg')}</span>
-              </button>
-            </>
           )}
+          <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapPng(flowmap))}>
+            <FileImage size={15} /> <span>{t('export.png')}</span>
+          </button>
+          <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapSvg(flowmap))}>
+            <FileCode2 size={15} /> <span>{t('export.svg')}</span>
+          </button>
         </div>
       )}
     </div>
