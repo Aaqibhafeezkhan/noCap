@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from nocap.audio.transcriber import _extract_words, _normalize_whisper_cpp_json
+from nocap.audio.transcriber import _extract_words
+from nocap.audio.whisper_cpp_json import normalize_whisper_cpp_json
 
 
 class WhisperCppTranscriberTest(unittest.TestCase):
@@ -31,7 +32,7 @@ class WhisperCppTranscriberTest(unittest.TestCase):
             ],
         }
 
-        result = _normalize_whisper_cpp_json(data)
+        result = normalize_whisper_cpp_json(data)
         words = _extract_words(result)
 
         self.assertEqual(1, len(words))
@@ -58,7 +59,7 @@ class WhisperCppTranscriberTest(unittest.TestCase):
             ],
         }
 
-        result = _normalize_whisper_cpp_json(data)
+        result = normalize_whisper_cpp_json(data)
         words = _extract_words(result)
 
         self.assertEqual(1, len(words))
