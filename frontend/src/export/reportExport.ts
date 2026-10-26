@@ -85,3 +85,48 @@ export async function renderReportCanvas(): Promise<RenderedReport> {
   context.drawImage(image, 0, 0, width, height);
   return { canvas, width, height, scale };
 }
+
+/** The colour behind the report: the app shell is transparent, the body paints the page. */
+function pageBackground(): string {
+  for (const element of [document.querySelector('.app-shell'), document.body]) {
+    const color = element ? getComputedStyle(element).backgroundColor : '';
+    if (color && color !== 'transparent' && color !== 'rgba(0, 0, 0, 0)') return color;
+  }
+  return '#0a0a0b';
+}
+
+function inlineStyles(source: HTMLElement, clone: HTMLElement): void {
+  const computed = getComputedStyle(source);
+  for (const property of Array.from(computed)) {
+    clone.style.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property));
+  }
+  const sourceChildren = Array.from(source.children);
+  const cloneChildren = Array.from(clone.children);
+  sourceChildren.forEach((child, index) => {
+    const copy = cloneChildren[index];
+    if (child instanceof HTMLElement && copy instanceof HTMLElement) inlineStyles(child, copy);
+    else if (child instanceof SVGElement && copy instanceof SVGElement) inlineSvgStyles(child, copy);
+  });
+}
+
+function inlineSvgStyles(source: SVGElement, clone: SVGElement): void {
+  const computed = getComputedStyle(source);
+  for (const property of Array.from(computed)) {
+    clone.style.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property));
+  }
+  const sourceChildren = Array.from(source.children);
+  const cloneChildren = Array.from(clone.children);
+  sourceChildren.forEach((child, index) => {
+    const copy = cloneChildren[index];
+    if (child instanceof SVGElement && copy instanceof SVGElement) inlineSvgStyles(child, copy);
+  });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(t('export.failed')));
+    image.src = src;
+  });
+}

@@ -1,7 +1,7 @@
 import { ChevronDown, Download, FileCode2, FileImage, FileText } from 'lucide-react';
-import { downloadReportPdf } from '../../export/reportPdf';
 import { downloadFlowmapPng, downloadFlowmapSvg } from '../../export/flowExport';
 import { downloadReportPng } from '../../export/reportExport';
+import { downloadReportPdf } from '../../export/reportPdf';
 import { usePopover } from '../../hooks/usePopover';
 import { t } from '../../i18n';
 import type { FlowMap } from '../../types';
@@ -36,7 +36,7 @@ export function ExportMenu({ flowmap, isReport }: { flowmap: FlowMap; isReport: 
               <button role="menuitem" className="menu-item" onClick={() => run(() => downloadReportPdf(flowmap.metadata.title))}>
                 <FileText size={15} /> <span>{t('export.reportPdf')}</span>
               </button>
-             </>
+            </>
           )}
           <button role="menuitem" className="menu-item" onClick={() => run(() => downloadFlowmapPng(flowmap))}>
             <FileImage size={15} /> <span>{t('export.png')}</span>

@@ -1,6 +1,6 @@
+import { t } from '../i18n';
 import { downloadBlob, safeName } from './flowExport';
 import { buildPdf, type PdfPage } from './pdfWriter';
-import { t } from '../i18n';
 import { canvasToBlob, renderReportCanvas } from './reportExport';
 
 /** PDF viewers (Acrobat) cap a page at 14,400 points per side. */
